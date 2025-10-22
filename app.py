@@ -42,8 +42,9 @@ from metrics import (
 from ui_components import (
     create_gauge_chart, create_horizontal_bar_chart, create_trend_line_chart,
     create_timeline_figure, format_duration, format_percentage, create_progress_bar_html,
-    mini_metric_card, legend_badge, sentiment_transition_heatmap,
-    aht_vs_benchmark_dumbbell, volume_pareto_bars, quality_breakdown_trend_7d
+    mini_metric_card, legend_badge, sentiment_transition_heatmap, sentiment_transition_chart,
+    aht_vs_benchmark_dumbbell, volume_pareto_bars, quality_breakdown_trend_7d,
+    create_aes_component_chart
 )
 
 st.set_page_config(page_title="CC Analytics Dashboard", page_icon="📊", layout="wide", initial_sidebar_state="expanded")
