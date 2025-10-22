@@ -50,6 +50,8 @@ from timeline_enhanced import create_enhanced_timeline, calculate_timeline_stats
 from aes_widget import create_aes_spider_trend, get_aes_status_card, generate_mock_7day_trend
 from csj_sankey import create_sentiment_sankey, calculate_sentiment_summary
 from quality_trend_widget import create_quality_trend_redesigned
+from fcr_widget import create_fcr_dual_gauge, get_fcr_insights
+from efficiency_bubble import create_efficiency_bubble_chart, get_efficiency_insights
 
 st.set_page_config(page_title="CC Analytics Dashboard", page_icon="📊", layout="wide", initial_sidebar_state="expanded")
 
@@ -303,19 +305,35 @@ with tab_overview:
                 else:
                     st.info("No data")
         
-        st.markdown("**First Contact Resolution**")
-        col_a, col_b = st.columns(2)
-        with col_a:
-            fcr_stats = calculate_fcr_rate(filtered_calls)
-            st.metric("FCR (from agent notes)", f"{fcr_stats['fcr_rate']}%", help="Based on resolution annotations")
-        with col_b:
-            # Computed FCR: no callback within 48h
-            fcr_computed = (filtered_calls["resolution"].apply(lambda x: x["callback_needed"]) == "no").mean() * 100
-            st.metric("FCR (computed)", f"{fcr_computed:.1f}%", help="No callback needed within 48h")
+        # ROW 3: First Contact Resolution
+        st.subheader("3️⃣ First Contact Resolution (FCR)")
+        
+        # Calculate both FCR metrics
+        fcr_stats = calculate_fcr_rate(filtered_calls)
+        fcr_agent = fcr_stats['fcr_rate']
+        fcr_computed = (filtered_calls["resolution"].apply(lambda x: x["callback_needed"]) == "no").mean() * 100
+        
+        # Create dual gauge chart
+        fig_fcr = create_fcr_dual_gauge(fcr_agent, fcr_computed)
+        st.plotly_chart(fig_fcr, use_container_width=True)
+        
+        # Get insights
+        insights = get_fcr_insights(fcr_agent, fcr_computed)
+        
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            st.metric("Alignment", insights['alignment'])
+        with col2:
+            st.metric("Overall Status", insights['status'])
+        with col3:
+            st.metric("Avg FCR", f"{insights['avg_fcr']:.1f}%")
+        
+        st.info(f"💡 **Insight**: {insights['insight']}")
+        st.warning(f"📌 **Recommendation**: {insights['recommendation']}")
         st.markdown("---")
         
-        # ROW 3: Compliance + EPR
-        st.subheader("3️⃣ Compliance & Escalation Management")
+        # ROW 4: Compliance + EPR
+        st.subheader("4️⃣ Compliance & Escalation Management")
         col1, col2 = st.columns(2)
         with col1:
             st.markdown("**Compliance Risk**")
@@ -344,30 +362,32 @@ with tab_overview:
                 st.success("✅ No escalations in filtered period!")
         st.markdown("---")
         
-        # ROW 4: AHT vs Benchmark + Volume Pareto
-        st.subheader("4️⃣ Efficiency & Volume Analysis")
-        col1, col2 = st.columns([3, 2])
+        # ROW 5: Efficiency Bubble Chart (Topic Performance Matrix)
+        st.subheader("5️⃣ Topic Efficiency Matrix")
+        
+        # Create bubble chart
+        fig_efficiency = create_efficiency_bubble_chart(filtered_calls)
+        st.plotly_chart(fig_efficiency, use_container_width=True)
+        
+        # Get insights
+        eff_insights = get_efficiency_insights(filtered_calls)
+        
+        col1, col2 = st.columns(2)
         with col1:
-            tre_df = calculate_tre(filtered_calls)
-            if len(tre_df) > 0:
-                fig_aht = aht_vs_benchmark_dumbbell(tre_df)
-                st.plotly_chart(fig_aht, use_container_width=True)
-                st.info("💡 Green = faster than benchmark, Red = slower. Optimize red topics to improve efficiency.")
-            else:
-                st.info("No topic data available for AHT analysis.")
+            st.markdown("**⭐ Top Performers (High AES, Low AHT)**")
+            for topic in eff_insights['top_performers']:
+                st.markdown(f"- **{topic['topic']}**: {topic['aht']:.1f} min AHT, {topic['aes']:.1f} AES ({topic['volume']} calls)")
+        
         with col2:
-            fig_volume = volume_pareto_bars(filtered_calls)
-            st.plotly_chart(fig_volume, use_container_width=True)
-            volume_dist = calculate_volume_distribution(filtered_calls, "topic")
-            if volume_dist:
-                sorted_vol = sorted(volume_dist.items(), key=lambda x: x[1], reverse=True)
-                top3_count = sum([item[1] for item in sorted_vol[:3]])
-                top3_pct = 100 * top3_count / sum(volume_dist.values())
-                st.markdown(f"**Insight**: Top 3 topics represent **{top3_pct:.0f}%** of volume")
+            st.markdown("**🔴 Needs Improvement (Low AES or High AHT)**")
+            for topic in eff_insights['needs_improvement']:
+                st.markdown(f"- **{topic['topic']}**: {topic['aht']:.1f} min AHT, {topic['aes']:.1f} AES ({topic['volume']} calls)")
+        
+        st.info(f"💡 **Overall**: Avg AHT = {eff_insights['avg_aht']:.1f} min, Avg AES = {eff_insights['avg_aes']:.1f}. Focus on improving topics in bottom-right quadrant.")
         st.markdown("---")
         
-        # ROW 5: Quality Breakdown Trend - REDESIGNED
-        st.subheader("5️⃣ 7-Day Quality Breakdown Trend")
+        # ROW 6: Quality Breakdown Trend - REDESIGNED
+        st.subheader("6️⃣ 7-Day Quality Breakdown Trend")
         fig_quality = create_quality_trend_redesigned(filtered_calls, target=75.0)
         st.plotly_chart(fig_quality, use_container_width=True)
         st.info("💡 Top: Overall AES trend line. Bottom: Stacked bars show component contributions.")
