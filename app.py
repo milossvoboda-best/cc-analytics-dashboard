@@ -47,6 +47,7 @@ from ui_components import (
     create_aes_component_chart
 )
 from timeline_enhanced import create_enhanced_timeline, calculate_timeline_stats
+from aes_widget import create_aes_spider_trend, get_aes_status_card, generate_mock_7day_trend
 
 st.set_page_config(page_title="CC Analytics Dashboard", page_icon="📊", layout="wide", initial_sidebar_state="expanded")
 
@@ -178,27 +179,51 @@ with tab_overview:
         filtered_calls["quality_score"] = filtered_calls["quality"].apply(quality_binary_score)
         filtered_calls["is_fcr"] = filtered_calls["resolution"].apply(is_fcr)
         
-        # ROW 1: AES Component Breakdown
+        # ROW 1: AES Spider + Trend
         st.subheader("1️⃣ Agent Effectiveness Score (AES)")
-        col1, col2 = st.columns([2, 1])
+        
+        # Calculate component scores
+        avg_sentiment_component = ((filtered_calls["sentiment_end"] - filtered_calls["sentiment_start"] + 2) / 4 * 100).mean() * 0.25
+        avg_compliance = filtered_calls["comp_result"].apply(lambda x: x["score"]).mean() * 0.30
+        avg_resolution = filtered_calls["resolution"].apply(lambda x: 100 if x["resolution_achieved"] == "full" else (50 if x["resolution_achieved"] == "partial" else 0)).mean() * 0.30
+        avg_quality = filtered_calls["quality_score"].mean() * 0.15
+        avg_aes = filtered_calls["aes"].mean()
+        
+        # Component scores (without percentages in names)
+        components = {
+            "Sentiment": avg_sentiment_component,
+            "Compliance": avg_compliance,
+            "Resolution": avg_resolution,
+            "Quality": avg_quality
+        }
+        
+        # Generate 7-day trend data (mock)
+        trend_data = generate_mock_7day_trend(avg_aes, variance=2.5)
+        
+        # Get status card info
+        status_info = get_aes_status_card(avg_aes, target=75.0)
+        
+        # Display big number card
+        col1, col2, col3 = st.columns([1, 1, 2])
         with col1:
-            avg_sentiment_component = ((filtered_calls["sentiment_end"] - filtered_calls["sentiment_start"] + 2) / 4 * 100).mean() * 0.25
-            avg_compliance = filtered_calls["comp_result"].apply(lambda x: x["score"]).mean() * 0.30
-            avg_resolution = filtered_calls["resolution"].apply(lambda x: 100 if x["resolution_achieved"] == "full" else (50 if x["resolution_achieved"] == "partial" else 0)).mean() * 0.30
-            avg_quality = filtered_calls["quality_score"].mean() * 0.15
-            
-            components = {
-                "Sentiment (25%)": avg_sentiment_component,
-                "Compliance (30%)": avg_compliance,
-                "Resolution (30%)": avg_resolution,
-                "Quality (15%)": avg_quality
-            }
-            fig_aes = create_aes_component_chart(components)
-            st.plotly_chart(fig_aes, use_container_width=True)
+            st.metric(
+                "Overall AES",
+                f"{status_info['score']:.1f}%",
+                delta=f"{status_info['delta']:+.1f}% vs target"
+            )
         with col2:
-            avg_aes = filtered_calls["aes"].mean()
-            st.metric("Overall AES", f"{avg_aes:.1f}", delta=f"+{avg_aes - 75:.1f}% vs target")
-            st.info("💡 AES combines 4 weighted dimensions", icon="ℹ️")
+            st.markdown(f"### {status_info['status']}")
+            st.caption(status_info['description'])
+        
+        # Create and display spider + trend chart
+        fig_aes = create_aes_spider_trend(
+            current_components=components,
+            trend_data=trend_data,
+            overall_aes=avg_aes,
+            target=75.0
+        )
+        st.plotly_chart(fig_aes, use_container_width=True)
+        
         st.markdown("---")
         
         # ROW 2: Sentiment Journey + KPIs
