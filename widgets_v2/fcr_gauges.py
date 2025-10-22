@@ -186,8 +186,7 @@ def create_fcr_gauges(df: pd.DataFrame, target: float = 75.0) -> go.Figure:
         x=0.5, y=-0.15,
         showarrow=False,
         font=dict(size=11, color=COLORS['neutral']),
-        xanchor='center',
-        row=1, col=1
+        xanchor='center'
     )
     
     fig.add_annotation(
@@ -196,8 +195,7 @@ def create_fcr_gauges(df: pd.DataFrame, target: float = 75.0) -> go.Figure:
         x=0.5, y=-0.15,
         showarrow=False,
         font=dict(size=11, color=COLORS['neutral']),
-        xanchor='center',
-        row=1, col=2
+        xanchor='center'
     )
     
     # Update layout
