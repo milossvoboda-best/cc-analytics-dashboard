@@ -176,54 +176,50 @@ with tab_overview:
         filtered_calls["quality_score"] = filtered_calls["quality"].apply(quality_binary_score)
         filtered_calls["is_fcr"] = filtered_calls["resolution"].apply(is_fcr)
         
-        # ROW 1: AES Gauge + Mini-Cards Breakdown
+        # ROW 1: AES Component Breakdown
         st.subheader("1️⃣ Agent Effectiveness Score (AES)")
-        col1, col2 = st.columns([1, 2])
+        col1, col2 = st.columns([2, 1])
         with col1:
-            avg_aes = filtered_calls["aes"].mean()
-            fig_aes = create_gauge_chart(avg_aes, "Average AES", max_value=100)
-            st.plotly_chart(fig_aes, use_container_width=True)
-            st.info("💡 AES combines 4 dimensions: Sentiment improvement, Compliance adherence, Issue resolution, and Communication quality.")
-        with col2:
-            st.markdown("**Component Breakdown**")
             avg_sentiment_component = ((filtered_calls["sentiment_end"] - filtered_calls["sentiment_start"] + 2) / 4 * 100).mean() * 0.25
             avg_compliance = filtered_calls["comp_result"].apply(lambda x: x["score"]).mean() * 0.30
             avg_resolution = filtered_calls["resolution"].apply(lambda x: 100 if x["resolution_achieved"] == "full" else (50 if x["resolution_achieved"] == "partial" else 0)).mean() * 0.30
             avg_quality = filtered_calls["quality_score"].mean() * 0.15
-            col_a, col_b = st.columns(2)
-            with col_a:
-                st.markdown(mini_metric_card("Sentiment (25%)", f"{avg_sentiment_component:.1f}", color="#10b981"), unsafe_allow_html=True)
-                st.markdown(mini_metric_card("Resolution (30%)", f"{avg_resolution:.1f}", color="#f59e0b"), unsafe_allow_html=True)
-            with col_b:
-                st.markdown(mini_metric_card("Compliance (30%)", f"{avg_compliance:.1f}", color="#3b82f6"), unsafe_allow_html=True)
-                st.markdown(mini_metric_card("Quality (15%)", f"{avg_quality:.1f}", color="#8b5cf6"), unsafe_allow_html=True)
+            
+            components = {
+                "Sentiment (25%)": avg_sentiment_component,
+                "Compliance (30%)": avg_compliance,
+                "Resolution (30%)": avg_resolution,
+                "Quality (15%)": avg_quality
+            }
+            fig_aes = create_aes_component_chart(components)
+            st.plotly_chart(fig_aes, use_container_width=True)
+        with col2:
+            avg_aes = filtered_calls["aes"].mean()
+            st.metric("Overall AES", f"{avg_aes:.1f}", delta=f"+{avg_aes - 75:.1f}% vs target")
+            st.info("💡 AES combines 4 weighted dimensions", icon="ℹ️")
         st.markdown("---")
         
-        # ROW 2: Sentiment Transition Matrix + Improvement KPIs + FCR
+        # ROW 2: Sentiment Journey + KPIs
         st.subheader("2️⃣ Customer Sentiment Journey Analysis")
-        col1, col2 = st.columns([3, 2])
+        col1, col2 = st.columns([2, 1])
         with col1:
-            fig_heatmap = sentiment_transition_heatmap(filtered_calls)
-            st.plotly_chart(fig_heatmap, use_container_width=True)
-            st.info("💡 Shows sentiment transitions from call start to end. Diagonal = no change, upper-right = improvement.")
+            fig_sentiment = sentiment_transition_chart(filtered_calls)
+            st.plotly_chart(fig_sentiment, use_container_width=True)
         with col2:
-            st.markdown("**Improvement Metrics**")
             improvement_kpis = compute_sentiment_improvement_kpis(filtered_calls)
-            col_a, col_b, col_c = st.columns(3)
-            with col_a:
-                st.metric("Improving", f"{improvement_kpis['pct_improving']}%", help="Calls with sentiment improvement > 0.1")
-            with col_b:
-                st.metric("Stable", f"{improvement_kpis['pct_stable']}%", help="Calls with sentiment change between -0.1 and 0.1")
-            with col_c:
-                st.metric("Declining", f"{improvement_kpis['pct_deteriorating']}%", help="Calls with sentiment decline > 0.1")
-            st.markdown("<div class='mt-2'></div>", unsafe_allow_html=True)
-            st.markdown("**First Contact Resolution**")
+            st.metric("Improving", f"{improvement_kpis['pct_improving']}%", delta=None)
+            st.metric("Stable", f"{improvement_kpis['pct_stable']}%", delta=None)
+            st.metric("Declining", f"{improvement_kpis['pct_deteriorating']}%", delta=None)
+        
+        st.markdown("**First Contact Resolution**")
+        col_a, col_b = st.columns(2)
+        with col_a:
             fcr_stats = calculate_fcr_rate(filtered_calls)
-            fcr_benchmark = 75.0
-            st.metric("FCR Rate", f"{fcr_stats['fcr_rate']}%", delta=f"{fcr_stats['fcr_rate'] - fcr_benchmark:+.1f}% vs benchmark")
-            status = compare_to_benchmark(fcr_stats["fcr_rate"], fcr_benchmark, higher_is_better=True)
-            status_emoji = "🟢" if status == "Above" else ("🟡" if status == "On Target" else "🔴")
-            st.markdown(f"{status_emoji} **Status**: {status} (Target: {fcr_benchmark}%)")
+            st.metric("FCR (from agent notes)", f"{fcr_stats['fcr_rate']}%", help="Based on resolution annotations")
+        with col_b:
+            # Computed FCR: no callback within 48h
+            fcr_computed = (filtered_calls["resolution"].apply(lambda x: x["callback_needed"]) == "no").mean() * 100
+            st.metric("FCR (computed)", f"{fcr_computed:.1f}%", help="No callback needed within 48h")
         st.markdown("---")
         
         # ROW 3: Compliance + EPR

@@ -14,13 +14,16 @@ from typing import Dict, List
 # ============================================================================
 
 COLOR_SCHEME = {
-    "primary": "#667eea",
-    "secondary": "#764ba2",
+    "primary": "#2d4a6f",
+    "secondary": "#1e3a5f",
     "success": "#10b981",
     "warning": "#f59e0b",
     "danger": "#ef4444",
     "info": "#3b82f6",
-    "agent": "#667eea",
+    "mint": "#7dd3c0",
+    "mint_light": "#a8e6d7",
+    "pink": "#e85d75",
+    "agent": "#2d4a6f",
     "customer": "#f59e0b",
     "silence": "#d1d5db",
     "hold": "#ef4444",
@@ -89,6 +92,67 @@ def create_gauge_chart(
         margin=dict(l=20, r=20, t=60, b=20),
         paper_bgcolor="white",
         font={'family': "Arial, sans-serif"}
+    )
+    
+    return fig
+
+
+# ============================================================================
+# AES COMPONENT BREAKDOWN (HORIZONTAL BARS)
+# ============================================================================
+
+def create_aes_component_chart(components: Dict[str, float]) -> go.Figure:
+    """
+    Vytvorí horizontal bar chart pre AES component breakdown.
+    
+    Args:
+        components: Dict s názvami a hodnotami {"Sentiment": 18.6, "Compliance": 27.1, ...}
+        
+    Returns:
+        Plotly Figure
+    """
+    names = list(components.keys())
+    values = list(components.values())
+    colors = [COLOR_SCHEME["mint"], COLOR_SCHEME["primary"], COLOR_SCHEME["warning"], COLOR_SCHEME["info"]]
+    
+    fig = go.Figure()
+    
+    fig.add_trace(go.Bar(
+        x=values,
+        y=names,
+        orientation='h',
+        marker=dict(
+            color=colors[:len(names)],
+            line=dict(color='white', width=2)
+        ),
+        text=[f"{v:.1f}" for v in values],
+        textposition='inside',
+        textfont=dict(size=14, color='white', family='Inter'),
+        hovertemplate='%{y}: %{x:.1f}<extra></extra>'
+    ))
+    
+    fig.update_layout(
+        height=250,
+        margin=dict(l=20, r=20, t=20, b=20),
+        paper_bgcolor='rgba(0,0,0,0)',
+        plot_bgcolor='rgba(0,0,0,0)',
+        xaxis=dict(
+            showgrid=True,
+            gridcolor='#e5e7eb',
+            range=[0, 35],
+            title="Score",
+            titlefont=dict(size=12, color='#64748b')
+        ),
+        yaxis=dict(
+            showgrid=False,
+            tickfont=dict(size=12, family='Inter', color='#1e3a5f')
+        ),
+        font=dict(family='Inter'),
+        hoverlabel=dict(
+            bgcolor="white",
+            font_size=12,
+            font_family="Inter"
+        )
     )
     
     return fig
@@ -660,6 +724,57 @@ def sentiment_transition_heatmap(df: pd.DataFrame) -> go.Figure:
     
     fig.update_xaxes(side="bottom")
     fig.update_yaxes(autorange="reversed")
+    
+    return fig
+
+
+def sentiment_transition_chart(df: pd.DataFrame) -> go.Figure:
+    """
+    Stacked bar chart showing sentiment flow (compact).
+    """
+    from metrics import compute_sentiment_buckets
+    
+    transitions = compute_sentiment_buckets(df)
+    
+    if len(transitions) == 0:
+        fig = go.Figure()
+        fig.add_annotation(text="No data", xref="paper", yref="paper", x=0.5, y=0.5, showarrow=False)
+        fig.update_layout(height=250, margin=dict(l=40, r=20, t=20, b=40))
+        return fig
+    
+    buckets = ["Neg", "Neutral", "Pos"]
+    colors_map = {"Neg": "#ef4444", "Neutral": "#f59e0b", "Pos": "#10b981"}
+    
+    fig = go.Figure()
+    
+    for end_bucket in buckets:
+        values = []
+        for start_bucket in buckets:
+            row = transitions[(transitions["start_bucket"] == start_bucket) & (transitions["end_bucket"] == end_bucket)]
+            val = row["pct"].values[0] if len(row) > 0 else 0
+            values.append(val)
+        
+        fig.add_trace(go.Bar(
+            name=end_bucket,
+            x=buckets,
+            y=values,
+            marker=dict(color=colors_map[end_bucket]),
+            text=[f"{v:.0f}%" if v > 2 else "" for v in values],
+            textposition='inside',
+            textfont=dict(size=11, color='white')
+        ))
+    
+    fig.update_layout(
+        barmode='stack',
+        height=280,
+        margin=dict(l=40, r=20, t=20, b=40),
+        paper_bgcolor='rgba(0,0,0,0)',
+        plot_bgcolor='rgba(0,0,0,0)',
+        xaxis=dict(title="Start Sentiment", tickfont=dict(size=12)),
+        yaxis=dict(title="% of Calls", tickfont=dict(size=12)),
+        legend=dict(title="End State", orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+        font=dict(family='Inter')
+    )
     
     return fig
 
