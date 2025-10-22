@@ -49,6 +49,7 @@ from ui_components import (
 from timeline_enhanced import create_enhanced_timeline, calculate_timeline_stats
 from aes_widget import create_aes_spider_trend, get_aes_status_card, generate_mock_7day_trend
 from csj_sankey import create_sentiment_sankey, calculate_sentiment_summary
+from quality_trend_widget import create_quality_trend_redesigned
 
 st.set_page_config(page_title="CC Analytics Dashboard", page_icon="📊", layout="wide", initial_sidebar_state="expanded")
 
@@ -230,7 +231,7 @@ with tab_overview:
         # ROW 2: Sentiment Journey Sankey
         st.subheader("2️⃣ Customer Sentiment Journey Analysis")
         
-        col1, col2 = st.columns([3, 1])
+        col1, col2 = st.columns([2, 1])
         with col1:
             # Create Sankey diagram
             fig_sankey = create_sentiment_sankey(filtered_calls)
@@ -265,20 +266,39 @@ with tab_overview:
             if summary['declining_pct'] > 10:
                 st.warning(f"⚠️ Monitor decline trend")
             
-            # Breakdown declining calls
-            if summary['declining_count'] > 0:
-                with st.expander("🔍 Declining Call Breakdown"):
-                    if summary['declining_by_topic']:
-                        st.markdown("**Top Topics:**")
-                        for item in summary['declining_by_topic']:
-                            st.markdown(f"- {item['topic']}: {item['count']} calls")
-                    
-                    if summary['declining_by_agent']:
-                        st.markdown("**Top Agents:**")
-                        for item in summary['declining_by_agent']:
-                            st.markdown(f"- {item['agent']}: {item['count']} calls")
-            
             st.info(f"💡 Most common: {summary['top_flow']} ({summary['top_flow_count']} calls)")
+        
+        # Declining breakdown table BELOW Sankey
+        if summary['declining_count'] > 0:
+            st.markdown("#### 🔴 Worst Performing - Declining Calls")
+            
+            col_a, col_b = st.columns(2)
+            
+            with col_a:
+                if summary['declining_by_topic']:
+                    st.markdown("**Worst Topics:**")
+                    topic_data = []
+                    for item in summary['declining_by_topic']:
+                        topic_data.append({
+                            'Topic': item['topic'],
+                            'Declining Calls': item['count']
+                        })
+                    st.dataframe(pd.DataFrame(topic_data), use_container_width=True, hide_index=True)
+                else:
+                    st.info("No topic data available")
+            
+            with col_b:
+                if summary['declining_by_agent']:
+                    st.markdown("**Worst Agents:**")
+                    agent_data = []
+                    for item in summary['declining_by_agent']:
+                        agent_data.append({
+                            'Agent': item['agent'],
+                            'Declining Calls': item['count']
+                        })
+                    st.dataframe(pd.DataFrame(agent_data), use_container_width=True, hide_index=True)
+                else:
+                    st.info("No agent data available")
         
         st.markdown("**First Contact Resolution**")
         col_a, col_b = st.columns(2)
@@ -343,11 +363,11 @@ with tab_overview:
                 st.markdown(f"**Insight**: Top 3 topics represent **{top3_pct:.0f}%** of volume")
         st.markdown("---")
         
-        # ROW 5: Quality Breakdown Trend
+        # ROW 5: Quality Breakdown Trend - REDESIGNED
         st.subheader("5️⃣ 7-Day Quality Breakdown Trend")
-        fig_quality = quality_breakdown_trend_7d(filtered_calls)
+        fig_quality = create_quality_trend_redesigned(filtered_calls, target=75.0)
         st.plotly_chart(fig_quality, use_container_width=True)
-        st.info("💡 Stacked area shows % of calls passing each QA component. Dashed line shows overall AES trend.")
+        st.info("💡 Top: Overall AES trend line. Bottom: Stacked bars show component contributions.")
 
 # === TAB 2: AGENTS ===
 with tab_agents:

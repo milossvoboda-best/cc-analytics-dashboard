@@ -230,26 +230,42 @@ def create_enhanced_timeline(
             # Linear interpolation
             smooth_sentiments = np.interp(smooth_times, times, sentiments)
         
-        # Determine colors based on sentiment value
-        colors_gradient = []
-        for s in smooth_sentiments:
-            if s >= 0.3:
-                colors_gradient.append(COLORS['excellent'])
-            elif s >= 0:
-                colors_gradient.append(COLORS['good'])
-            elif s >= -0.3:
-                colors_gradient.append(COLORS['warning'])
-            else:
-                colors_gradient.append(COLORS['critical'])
+        # Create gradient fill by adding multiple traces with different colors
+        # Divide into segments and color each based on sentiment value
+        num_segments = len(smooth_times) - 1
         
-        # Plot sentiment area
+        for i in range(num_segments):
+            t_start = smooth_times[i]
+            t_end = smooth_times[i + 1]
+            s_avg = (smooth_sentiments[i] + smooth_sentiments[i + 1]) / 2
+            
+            # Determine fill color based on average sentiment in segment
+            if s_avg >= 0.3:
+                fill_color = 'rgba(0, 200, 83, 0.3)'  # Green
+            elif s_avg >= 0:
+                fill_color = 'rgba(100, 221, 23, 0.3)'  # Light green
+            elif s_avg >= -0.3:
+                fill_color = 'rgba(255, 167, 38, 0.3)'  # Orange
+            else:
+                fill_color = 'rgba(239, 83, 80, 0.3)'  # Red
+            
+            # Add segment as filled area
+            fig.add_trace(go.Scatter(
+                x=[t_start, t_end, t_end, t_start],
+                y=[0, 0, smooth_sentiments[i + 1], smooth_sentiments[i]],
+                fill='toself',
+                fillcolor=fill_color,
+                line=dict(width=0),
+                showlegend=False,
+                hoverinfo='skip'
+            ), row=3, col=1)
+        
+        # Add sentiment line on top (black border)
         fig.add_trace(go.Scatter(
             x=smooth_times,
             y=smooth_sentiments,
-            fill='tozeroy',
-            fillcolor='rgba(0, 200, 83, 0.2)',  # Green with opacity
-            line=dict(color=COLORS['excellent'], width=3),
             mode='lines',
+            line=dict(color='#1e3a5f', width=2),
             name='Sentiment',
             hovertemplate='Sentiment: %{y:.2f}<br>Time: %{x:.1f}s<extra></extra>',
             showlegend=False
