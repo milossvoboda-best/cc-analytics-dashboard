@@ -247,136 +247,190 @@ with col2:
 st.divider()
 
 # ============================================================================
-# ROW 4: CALL TIMELINE VISUALIZATION
+# ROW 4: ENHANCED CALL TIMELINE VISUALIZATION
 # ============================================================================
 
-st.markdown("#### Average Call Timeline Analysis")
-st.caption("📞 Detailed breakdown of call structure, sentiment progression, and speaking dynamics")
+st.markdown("#### 📞 Call Timeline with Compliance Checkpoints")
 
-# Create multi-layer timeline visualization
-fig = make_subplots(
-    rows=4, cols=1,
-    shared_xaxes=True,
-    vertical_spacing=0.05,
-    row_heights=[0.15, 0.3, 0.3, 0.25],
-    subplot_titles=('Speaker Distribution', 'Sentiment Progression', 'Speaking Rate (WPM)', 'Compliance Checkpoints')
-)
+# Call selector
+call_ids = filtered_df['call_id'].tolist()
+selected_call_id = st.selectbox("Select Call to Analyze:", call_ids, key='call_selector')
 
-# LAYER 1: Speaker Distribution (Horizontal Stacked Bar)
-fig.add_trace(go.Bar(
-    x=[timeline['agent_ratio']], y=[''], orientation='h',
-    name='Agent', marker=dict(color='#2196F3'),
-    text=[f"Agent: {timeline['agent_ratio']:.0f}%"],
-    textposition='inside',
-    hovertemplate='Agent Talk Time: %{x:.1f}%<extra></extra>'
-), row=1, col=1)
+# Get call data
+selected_call = filtered_df[filtered_df['call_id'] == selected_call_id].iloc[0]
+call_transcript = [t for t in transcripts if t['call_id'] == selected_call_id]
 
-fig.add_trace(go.Bar(
-    x=[timeline['customer_ratio']], y=[''], orientation='h',
-    name='Customer', marker=dict(color='#FF9800'),
-    text=[f"Customer: {timeline['customer_ratio']:.0f}%"],
-    textposition='inside',
-    hovertemplate='Customer Talk Time: %{x:.1f}%<extra></extra>'
-), row=1, col=1)
+if call_transcript:
+    transcript = call_transcript[0]
+    segments = transcript['segments']
+    
+    # Create Gantt chart + WPM overlay with sentiment gradient background
+    fig = make_subplots(
+        rows=2, cols=1,
+        shared_xaxes=True,
+        vertical_spacing=0.08,
+        row_heights=[0.35, 0.65],
+        subplot_titles=('Speaker Timeline (Gantt Chart)', 'Call Timeline with Compliance Checkpoints')
+    )
 
-fig.add_trace(go.Bar(
-    x=[timeline['silence_ratio']], y=[''], orientation='h',
-    name='Silence', marker=dict(color='#9E9E9E'),
-    text=[f"Silence: {timeline['silence_ratio']:.0f}%"],
-    textposition='inside',
-    hovertemplate='Silence: %{x:.1f}%<extra></extra>'
-), row=1, col=1)
-
-# LAYER 2: Sentiment Progression (Area Chart)
-time_pct = [0, 20, 40, 60, 80, 100]
-sentiment_values = [-0.4, -0.3, -0.1, 0.0, 0.15, 0.2]
-
-# Create gradient fill
-fig.add_trace(go.Scatter(
-    x=time_pct, y=sentiment_values,
-    fill='tozeroy',
-    fillgradient=dict(
-        type='vertical',
-        colorscale=[[0, '#EF4444'], [0.5, '#F59E0B'], [1, '#10B981']]
-    ),
-    line=dict(color='#059669', width=3),
-    mode='lines+markers',
-    name='Sentiment',
-    marker=dict(size=8, color='#059669'),
-    hovertemplate='Time: %{x}%<br>Sentiment: %{y:.2f}<extra></extra>'
-), row=2, col=1)
-
-# Add sentiment zone lines
-fig.add_hline(y=0.3, line_dash='dash', line_color='green', annotation_text='Positive', row=2, col=1)
-fig.add_hline(y=-0.3, line_dash='dash', line_color='red', annotation_text='Negative', row=2, col=1)
-fig.add_hline(y=0, line_dash='dot', line_color='gray', row=2, col=1)
-
-# LAYER 3: Speaking Rate (WPM - Two Lines)
-agent_wpm = [140, 145, 152, 148, 143, 145]
-customer_wpm = [130, 135, 138, 140, 136, 138]
-
-fig.add_trace(go.Scatter(
-    x=time_pct, y=agent_wpm,
-    mode='lines+markers',
-    name='Agent WPM',
-    line=dict(color='#2196F3', width=3),
-    marker=dict(size=7),
-    hovertemplate='Agent WPM: %{y}<extra></extra>'
-), row=3, col=1)
-
-fig.add_trace(go.Scatter(
-    x=time_pct, y=customer_wpm,
-    mode='lines+markers',
-    name='Customer WPM',
-    line=dict(color='#FF9800', width=3),
-    marker=dict(size=7),
-    hovertemplate='Customer WPM: %{y}<extra></extra>'
-), row=3, col=1)
-
-# Add WPM zone lines
-fig.add_hline(y=180, line_dash='dash', line_color='red', annotation_text='Too Fast', row=3, col=1)
-fig.add_hline(y=150, line_dash='dash', line_color='orange', annotation_text='Fast', row=3, col=1)
-fig.add_hline(y=120, line_dash='dash', line_color='blue', annotation_text='Slow', row=3, col=1)
-
-# LAYER 4: Compliance Checkpoints (Scatter with Status)
-checkpoint_times = [5, 30, 70, 95]
-checkpoint_names = ['Greeting & ID', 'Active Listening', 'Solution Offered', 'Proper Closing']
-checkpoint_status = [1, 1, 0, 1]  # 1 = pass, 0 = fail
-
-for i, (time, name, status) in enumerate(zip(checkpoint_times, checkpoint_names, checkpoint_status)):
-    fig.add_trace(go.Scatter(
-        x=[time], y=[i],
-        mode='markers+text',
-        marker=dict(
-            size=20,
-            color='#10B981' if status else '#EF4444',
-            symbol='circle',
-            line=dict(width=2, color='white')
-        ),
-        text=['✓' if status else '✗'],
-        textposition='middle center',
-        textfont=dict(color='white', size=14, family='Arial Black'),
-        name=name,
-        hovertemplate=f'{name}<br>Status: {"✓ Pass" if status else "✗ Fail"}<extra></extra>',
-        showlegend=False
-    ), row=4, col=1)
-
-# Update layout
-fig.update_xaxes(range=[0, 100], title_text='Call Progress (%)', row=4, col=1)
-fig.update_yaxes(showticklabels=False, row=1, col=1)
-fig.update_yaxes(range=[-1, 1], title_text='Score', row=2, col=1)
-fig.update_yaxes(range=[100, 200], title_text='WPM', row=3, col=1)
-fig.update_yaxes(showticklabels=False, range=[-0.5, 3.5], row=4, col=1)
-
-fig.update_layout(
-    height=600,
-    showlegend=True,
-    legend=dict(orientation='h', yanchor='top', y=-0.05),
-    hovermode='x unified',
-    barmode='stack'
-)
-
-st.plotly_chart(fig, use_container_width=True)
+    # TOP: Gantt Chart - Speaker Timeline
+    call_duration = selected_call['duration_sec']
+    
+    for seg in segments:
+        start_time = seg['start']
+        end_time = seg['end']
+        speaker = seg['speaker']
+        text_preview = seg['text'][:30] + "..." if len(seg['text']) > 30 else seg['text']
+        wpm = seg.get('wpm', 140)
+        
+        speaker_row = 'AGENT' if speaker == 'Agent' else 'CUSTOMER'
+        color = '#2196F3' if speaker == 'Agent' else '#FF9800'
+        
+        fig.add_trace(go.Bar(
+            x=[end_time - start_time],
+            y=[speaker_row],
+            base=start_time,
+            orientation='h',
+            name=speaker,
+            marker=dict(color=color, line=dict(width=0)),
+            text=[f"{wpm} WPM"],
+            textposition='inside',
+            hovertemplate=f'<b>{speaker}</b><br>Time: {start_time:.1f}s - {end_time:.1f}s<br>Duration: {end_time-start_time:.1f}s<br>WPM: {wpm}<br>Text: {text_preview}<extra></extra>',
+            showlegend=False
+        ), row=1, col=1)
+    
+    # BOTTOM: WPM Lines with Sentiment Gradient Background + Compliance Checkpoints
+    
+    # Create sentiment gradient background rectangles
+    num_zones = 20
+    zone_width = call_duration / num_zones
+    
+    for i in range(num_zones):
+        x_start = i * zone_width
+        x_end = (i + 1) * zone_width
+        
+        # Sentiment progression (starts negative, ends positive)
+        progress = i / num_zones
+        sentiment = selected_call['sentiment_start'] + (selected_call['sentiment_end'] - selected_call['sentiment_start']) * progress
+        
+        # Color based on sentiment
+        if sentiment < -0.3:
+            color = 'rgba(239, 68, 68, 0.15)'  # Red
+        elif sentiment < 0:
+            color = 'rgba(251, 191, 36, 0.15)'  # Orange
+        elif sentiment < 0.3:
+            color = 'rgba(34, 197, 94, 0.1)'  # Light green
+        else:
+            color = 'rgba(22, 163, 74, 0.2)'  # Dark green
+        
+        fig.add_shape(
+            type='rect',
+            x0=x_start, x1=x_end,
+            y0=100, y1=200,
+            fillcolor=color,
+            line=dict(width=0),
+            layer='below',
+            row=2, col=1
+        )
+    
+    # WPM lines from segments
+    agent_times = []
+    agent_wpms = []
+    customer_times = []
+    customer_wpms = []
+    
+    for seg in segments:
+        mid_time = (seg['start'] + seg['end']) / 2
+        wpm = seg.get('wpm', 140)
+        
+        if seg['speaker'] == 'Agent':
+            agent_times.append(mid_time)
+            agent_wpms.append(wpm)
+        else:
+            customer_times.append(mid_time)
+            customer_wpms.append(wpm)
+    
+    # Agent WPM line
+    if agent_times:
+        fig.add_trace(go.Scatter(
+            x=agent_times, y=agent_wpms,
+            mode='lines+markers',
+            name='Agent WPM',
+            line=dict(color='#2196F3', width=3),
+            marker=dict(size=6),
+            hovertemplate='Agent WPM: %{y}<extra></extra>'
+        ), row=2, col=1)
+    
+    # Customer WPM line
+    if customer_times:
+        fig.add_trace(go.Scatter(
+            x=customer_times, y=customer_wpms,
+            mode='lines+markers',
+            name='Customer WPM',
+            line=dict(color='#FF9800', width=3),
+            marker=dict(size=6),
+            hovertemplate='Customer WPM: %{y}<extra></extra>'
+        ), row=2, col=1)
+    
+    # WPM reference lines
+    fig.add_hline(y=180, line_dash='dash', line_color='#EF4444', line_width=1, annotation_text='Too Fast', row=2, col=1)
+    fig.add_hline(y=150, line_dash='dash', line_color='#F59E0B', line_width=1, annotation_text='Normal', row=2, col=1)
+    fig.add_hline(y=120, line_dash='dash', line_color='#3B82F6', line_width=1, annotation_text='Slow', row=2, col=1)
+    
+    # Compliance checkpoints as vertical lines
+    compliance = selected_call['compliance']
+    checkpoints = [
+        ('Greeting', compliance.get('greeting_proper', False), call_duration * 0.05),
+        ('Identification', compliance.get('identification', False), call_duration * 0.1),
+        ('Verification', compliance.get('customer_verification', False), call_duration * 0.15),
+        ('Solution', compliance.get('clear_communication', False), call_duration * 0.7),
+        ('Closing', compliance.get('proper_closing', False), call_duration * 0.95)
+    ]
+    
+    for name, status, time_pos in checkpoints:
+        color = '#10B981' if status else '#EF4444'
+        symbol = '✓' if status else '✗'
+        
+        fig.add_vline(
+            x=time_pos,
+            line_dash='dot',
+            line_color=color,
+            line_width=2,
+            annotation_text=f"{symbol} {name}",
+            annotation_position='top',
+            annotation_font=dict(size=10, color=color),
+            row=2, col=1
+        )
+    
+    # Update axes
+    fig.update_xaxes(title_text='Time (seconds)', range=[0, call_duration], row=2, col=1)
+    fig.update_xaxes(title_text='', range=[0, call_duration], row=1, col=1)
+    fig.update_yaxes(title_text='', row=1, col=1)
+    fig.update_yaxes(title_text='WPM', range=[100, 200], row=2, col=1)
+    
+    fig.update_layout(
+        height=500,
+        showlegend=True,
+        legend=dict(orientation='h', yanchor='top', y=-0.08),
+        hovermode='x unified',
+        barmode='stack',
+        margin=dict(l=80, r=20, t=60, b=80)
+    )
+    
+    st.plotly_chart(fig, use_container_width=True)
+    
+    # Call stats below
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        st.metric("Duration", f"{int(call_duration // 60)}:{int(call_duration % 60):02d}")
+        st.caption(f"Agent: {selected_call['agent_talk_sec']:.0f}s | Customer: {selected_call['customer_talk_sec']:.0f}s")
+    with col2:
+        st.metric("Sentiment Δ", f"{selected_call['sentiment_end'] - selected_call['sentiment_start']:+.2f}")
+        st.caption(f"Start: {selected_call['sentiment_start']:.2f} → End: {selected_call['sentiment_end']:.2f}")
+    with col3:
+        passed = sum([1 for _, status, _ in checkpoints if status])
+        st.metric("Compliance", f"{passed}/{len(checkpoints)}")
+        st.caption(f"AES: {selected_call['aes_score']:.1f}% | AutoQA: {selected_call['autoqa_score']:.1f}%")
 
 st.divider()
 
