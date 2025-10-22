@@ -41,7 +41,11 @@ with st.sidebar:
     period = st.selectbox("Select Period", ["Last 7 days", "Last 30 days", "Last 90 days", "Custom"])
     
     st.markdown("### 👥 Team")
-    teams = ["All Teams"] + calls_df['agent_team'].unique().tolist()
+    # Get unique teams safely
+    if 'team' in calls_df.columns:
+        teams = ["All Teams"] + sorted(calls_df['team'].unique().tolist())
+    else:
+        teams = ["All Teams", "Sales", "Support", "Technical"]
     selected_team = st.selectbox("Select Team", teams)
     
     st.markdown("### 📞 Line")
@@ -49,7 +53,7 @@ with st.sidebar:
     selected_line = st.selectbox("Select Line", lines)
     
     st.markdown("### 👤 Agent")
-    agents = ["All Agents"] + calls_df['agent_id'].unique().tolist()
+    agents = ["All Agents"] + sorted(calls_df['agent_id'].unique().tolist())
     selected_agent = st.selectbox("Select Agent", agents)
     
     st.markdown("---")
@@ -57,8 +61,10 @@ with st.sidebar:
 
 # Filter data
 filtered_df = calls_df.copy()
-if selected_team != "All Teams":
-    filtered_df = filtered_df[filtered_df['agent_team'] == selected_team]
+if selected_team != "All Teams" and 'team' in filtered_df.columns:
+    filtered_df = filtered_df[filtered_df['team'] == selected_team]
+if selected_agent != "All Agents":
+    filtered_df = filtered_df[filtered_df['agent_id'] == selected_agent]
 
 # ============================================================================
 # HEADER
