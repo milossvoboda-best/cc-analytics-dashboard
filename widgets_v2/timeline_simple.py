@@ -32,11 +32,13 @@ def calculate_timeline_summary(df: pd.DataFrame) -> Dict:
     # Talk time ratios
     total_agent_talk = df['agent_talk_sec'].sum()
     total_customer_talk = df['customer_talk_sec'].sum()
-    total_silence = df.apply(lambda x: x['duration_sec'] * x['silence_ratio'], axis=1).sum()
     total_time = df['duration_sec'].sum()
     
     agent_ratio = (total_agent_talk / total_time * 100) if total_time > 0 else 0
     customer_ratio = (total_customer_talk / total_time * 100) if total_time > 0 else 0
+    
+    # Calculate silence as remainder
+    total_silence = total_time - total_agent_talk - total_customer_talk
     silence_ratio = (total_silence / total_time * 100) if total_time > 0 else 0
     
     # Sentiment improvement
