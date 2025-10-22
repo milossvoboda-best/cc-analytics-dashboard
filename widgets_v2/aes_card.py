@@ -131,7 +131,7 @@ def create_aes_card(df: pd.DataFrame, target: float = 75.0, prev_period_aes: flo
     fig = make_subplots(
         rows=1, cols=2,
         column_widths=[0.5, 0.5],
-        specs=[[{'type': 'scatterpolar'}, {'type': 'indicator'}]],
+        specs=[[{'type': 'scatterpolar'}, {'type': 'xy'}]],
         horizontal_spacing=0.15
     )
     
@@ -184,20 +184,65 @@ def create_aes_card(df: pd.DataFrame, target: float = 75.0, prev_period_aes: flo
         )
     )
     
-    # RIGHT: Status box (using indicator for text display)
-    status_text = f"<b style='font-size:36px; color:{status_color}'>{components['overall_aes_pct']:.1f}%</b><br>"
-    status_text += f"<b style='font-size:18px; color:{status_color}'>{status_label}</b><br><br>"
-    status_text += f"<span style='font-size:14px; color:#6B7280'>{status_desc}</span><br><br>"
-    status_text += f"<span style='font-size:12px; color:#6B7280'>vs Target: {vs_target_text}</span><br>"
-    status_text += f"<span style='font-size:12px; color:#6B7280'>vs Last Week: {vs_prev_text}</span>"
-    
-    fig.add_trace(go.Indicator(
-        mode="number",
-        value=components['overall_aes_pct'],
-        number={'suffix': '%', 'font': {'size': 0}},  # Hide number (using text instead)
-        title={'text': status_text, 'font': {'size': 14}},
-        domain={'x': [0, 1], 'y': [0, 1]}
+    # RIGHT: Status box (using annotations)
+    # Add invisible trace
+    fig.add_trace(go.Scatter(
+        x=[0], y=[0],
+        mode='markers',
+        marker=dict(size=0, color='rgba(0,0,0,0)'),
+        showlegend=False,
+        hoverinfo='skip'
     ), row=1, col=2)
+    
+    # Add annotations
+    fig.add_annotation(
+        text=f"<b>{components['overall_aes_pct']:.1f}%</b>",
+        xref="x2", yref="y2",
+        x=0, y=0.7,
+        showarrow=False,
+        font=dict(size=36, color=status_color, family='Inter'),
+        xanchor='center'
+    )
+    
+    fig.add_annotation(
+        text=f"<b>{status_label}</b>",
+        xref="x2", yref="y2",
+        x=0, y=0.5,
+        showarrow=False,
+        font=dict(size=18, color=status_color, family='Inter'),
+        xanchor='center'
+    )
+    
+    fig.add_annotation(
+        text=status_desc,
+        xref="x2", yref="y2",
+        x=0, y=0.3,
+        showarrow=False,
+        font=dict(size=14, color='#6B7280', family='Inter'),
+        xanchor='center'
+    )
+    
+    fig.add_annotation(
+        text=f"vs Target: {vs_target_text}",
+        xref="x2", yref="y2",
+        x=0, y=0.1,
+        showarrow=False,
+        font=dict(size=12, color='#6B7280', family='Inter'),
+        xanchor='center'
+    )
+    
+    fig.add_annotation(
+        text=f"vs Last Week: {vs_prev_text}",
+        xref="x2", yref="y2",
+        x=0, y=-0.05,
+        showarrow=False,
+        font=dict(size=12, color='#6B7280', family='Inter'),
+        xanchor='center'
+    )
+    
+    # Hide axes on right subplot
+    fig.update_xaxes(visible=False, showgrid=False, zeroline=False, row=1, col=2)
+    fig.update_yaxes(visible=False, showgrid=False, zeroline=False, row=1, col=2)
     
     # Update layout
     fig.update_layout(

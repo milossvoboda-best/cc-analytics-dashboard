@@ -338,7 +338,12 @@ def generate_autoqa_quality(topic: str, resolution: Dict) -> Dict:
         "empathy_shown": random.random() < base_prob - 0.1,
         "solution_offered": random.random() < base_prob,
         "professional_tone": random.random() < base_prob + 0.1,
+        "tone_appropriate": random.random() < base_prob + 0.1,
         "customer_name_used": random.random() < 0.5,
+        "positive_language_used": random.random() < base_prob - 0.05,
+        "call_control_maintained": random.random() < base_prob,
+        "greeting_and_introduction": random.random() < 0.9,
+        "closing_proper": random.random() < 0.85,
     }
     
     script_options = ["good", "partial", "poor"]
@@ -361,6 +366,22 @@ def generate_autoqa_quality(topic: str, resolution: Dict) -> Dict:
     
     quality["positive_moments"] = positive_moments
     quality["negative_moments"] = negative_moments
+    
+    # Calculate overall quality score (0-100)
+    score = 0
+    score += 20 if quality["active_listening"] else 0
+    score += 20 if quality["empathy_shown"] else 0
+    score += 20 if quality["solution_offered"] else 0
+    score += 15 if quality["professional_tone"] else 0
+    score += 10 if quality["customer_name_used"] else 0
+    
+    # Script adherence bonus
+    if quality["script_adherence"] == "good":
+        score += 15
+    elif quality["script_adherence"] == "partial":
+        score += 7
+    
+    quality["quality_score"] = min(100, score)
     
     return quality
 
