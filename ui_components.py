@@ -140,8 +140,8 @@ def create_aes_component_chart(components: Dict[str, float]) -> go.Figure:
             showgrid=True,
             gridcolor='#e5e7eb',
             range=[0, 35],
-            title="Score",
-            titlefont=dict(size=12, color='#64748b')
+            title_text="Score",
+            title_font=dict(size=12, color='#64748b')
         ),
         yaxis=dict(
             showgrid=False,
