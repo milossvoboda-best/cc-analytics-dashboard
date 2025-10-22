@@ -53,6 +53,8 @@ from quality_trend_widget import create_quality_trend_redesigned
 
 st.set_page_config(page_title="CC Analytics Dashboard", page_icon="📊", layout="wide", initial_sidebar_state="expanded")
 
+# Last updated: 2025-10-22 13:01 UTC+02:00
+
 def load_css():
     css_path = os.path.join(os.path.dirname(__file__), "styles.css")
     if os.path.exists(css_path):
