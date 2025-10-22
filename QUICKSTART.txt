@@ -1,0 +1,253 @@
+╔════════════════════════════════════════════════════════════════════════╗
+║                                                                        ║
+║               CC ANALYTICS - STREAMLIT DEMO QUICKSTART                 ║
+║                                                                        ║
+║        10-Widget Dashboard | STT + AutoQA | Syntetické Dáta           ║
+║                                                                        ║
+╚════════════════════════════════════════════════════════════════════════╝
+
+
+═══════════════════════════════════════════════════════════════════════
+  KROK 1: Vytvorenie virtuálneho prostredia
+═══════════════════════════════════════════════════════════════════════
+
+  python -m venv .venv
+
+
+═══════════════════════════════════════════════════════════════════════
+  KROK 2: Aktivácia virtuálneho prostredia
+═══════════════════════════════════════════════════════════════════════
+
+  Windows:
+  --------
+  .venv\Scripts\activate
+
+  Unix/Mac:
+  ---------
+  source .venv/bin/activate
+
+
+═══════════════════════════════════════════════════════════════════════
+  KROK 3: Inštalácia závislostí
+═══════════════════════════════════════════════════════════════════════
+
+  pip install -r requirements.txt
+
+
+═══════════════════════════════════════════════════════════════════════
+  KROK 4: Spustenie aplikácie
+═══════════════════════════════════════════════════════════════════════
+
+  streamlit run app.py
+
+
+═══════════════════════════════════════════════════════════════════════
+  ČO SA STANE PO SPUSTENÍ
+═══════════════════════════════════════════════════════════════════════
+
+  ✓ Streamlit server sa spustí na http://localhost:8501
+  ✓ Automaticky sa otvorí prehliadač
+  ✓ Vygeneruje sa 200 syntetických hovorov (12 agentov)
+  ✓ Dashboard je okamžite pripravený na použitie
+
+
+═══════════════════════════════════════════════════════════════════════
+  HLAVNÉ FUNKCIE
+═══════════════════════════════════════════════════════════════════════
+
+  📊 OVERVIEW TAB:
+     • Agent Effectiveness Score (AES) - gauge + breakdown
+     • Customer Sentiment Journey - line chart s delta
+     • First Contact Resolution (FCR) - % + benchmark
+     • Compliance Risk Score - level + violations
+     • Topic Resolution Efficiency - table s efficiency
+     • Agent Consistency Index - top 10 agentov
+     • Escalation Prevention Rate - % + reasons
+     • Average Handle Time - vs target
+     • Call Volume by Topic - pie chart
+     • Quality Trends - 7-day line chart
+
+  👥 AGENTS TAB:
+     • Zoznam všetkých agentov s metrikami
+     • Detail view pre konkrétneho agenta
+     • Trend AES v čase
+     • Zoznam hovorov agenta
+
+  📞 CALLS TAB:
+     • Zoznam všetkých hovorov s detailmi
+     • Call Detail View:
+       - Interactive Timeline
+       - Transkript segmenty (AGENT/CUSTOMER)
+       - Silence periods (pause/hold)
+       - Sentiment markers (Start/Mid/End)
+       - Interruptions (ak zapnuté)
+       - Compliance breakdown
+       - Resolution status
+       - Quality assessment
+
+  ⚙️ CONFIGURATION:
+     • Regenerate dataset s vlastnými parametrami
+     • Počet hovorov: 10-1000
+     • Počet agentov: 1-50
+     • Random seed pre reprodukovateľnosť
+     • Simulate interruptions checkbox
+
+
+═══════════════════════════════════════════════════════════════════════
+  FILTRE (SIDEBAR)
+═══════════════════════════════════════════════════════════════════════
+
+  📅 Date Range    - Časový rozsah
+  👥 Team          - Sales, Support, Tech, Retention
+  👤 Agent         - Konkrétny agent
+  📌 Topic         - billing, technical, complaint, atď.
+  📞 Direction     - INBOUND / OUTBOUND
+  🌐 Language      - cs / sk / en
+
+
+═══════════════════════════════════════════════════════════════════════
+  TESTOVANIE FUNKCIÍ
+═══════════════════════════════════════════════════════════════════════
+
+  1. Po spustení over, že vidíš všetkých 10 widgetov v Overview
+  
+  2. Vyskúšaj filtrovanie:
+     - Vyber konkrétny tím → widgety sa aktualizujú
+     - Vyber topic "complaint" → sentiment bude negatívnejší
+  
+  3. Prejdi na Calls tab:
+     - Vyber ľubovoľný hovor
+     - Over, že sa zobrazí timeline
+     - Over silence periods (šedé/červené pásma)
+     - Over sentiment markers (hviezdy)
+  
+  4. Prejdi na Config:
+     - Zapni "Simulate interruptions"
+     - Klikni "Regenerate Dataset"
+     - Vráť sa na Calls → vyber hovor
+     - Over interruption markers (diamanty)
+  
+  5. Testuj agent detail:
+     - Agents tab → vyber agenta
+     - Over mini-trend chart
+     - Over zoznam jeho hovorov
+
+
+═══════════════════════════════════════════════════════════════════════
+  ŠTRUKTÚRA PROJEKTU
+═══════════════════════════════════════════════════════════════════════
+
+  cc_analytics_demo/
+  ├── app.py                   ← Hlavná Streamlit app
+  ├── data_generation.py       ← Syntetické dáta (200 calls default)
+  ├── metrics.py               ← AES, ACI, FCR, EPR, TRE výpočty
+  ├── ui_components.py         ← Plotly grafy, timeline, styling
+  ├── styles.css               ← Custom CSS (moderný UI)
+  ├── requirements.txt         ← Python závislosti
+  ├── README.md                ← Kompletná dokumentácia
+  └── QUICKSTART.txt           ← Tento súbor
+
+
+═══════════════════════════════════════════════════════════════════════
+  TECHNICKÉ DETAILY
+═══════════════════════════════════════════════════════════════════════
+
+  • Žiadne externé API volania (offline demo)
+  • Deterministické výsledky (seed 42)
+  • Cached dataset pre rýchlosť
+  • 200 hovorov × 12 agentov × 30 dní
+  • Mix jazykov: 40% cs, 30% sk, 30% en
+  • Realistic distributions (AHT, FCR, sentiment)
+  • Compliance violations: 2-5% kritických
+  • Interruptions: 5% šanca per segment (ak zapnuté)
+
+
+═══════════════════════════════════════════════════════════════════════
+  KĽÚČOVÉ METRIKY - VZORCE
+═══════════════════════════════════════════════════════════════════════
+
+  AES (Agent Effectiveness Score):
+  --------------------------------
+  AES = 0.25×Sentiment + 0.30×Compliance + 0.30×Resolution + 0.15×Quality
+
+  ACI (Agent Consistency Index):
+  ------------------------------
+  ACI = 100 - (100 × CV)
+  kde CV = StdDev(AES) / Mean(AES)
+
+  FCR (First Contact Resolution):
+  --------------------------------
+  FCR = True keď resolution="full" AND callback=False AND escalated=False
+
+  EPR (Escalation Prevention Rate):
+  ----------------------------------
+  EPR = (Prevented / Total) × 100%
+
+  Compliance Risk:
+  ----------------
+  Risk = Critical_Fields×5 + Weighted_Fields + Violations×7
+
+
+═══════════════════════════════════════════════════════════════════════
+  TROUBLESHOOTING
+═══════════════════════════════════════════════════════════════════════
+
+  ❌ "Module not found" error
+     → pip install -r requirements.txt
+
+  ❌ Streamlit sa nespustí
+     → pip install --upgrade streamlit
+
+  ❌ Prázdny dashboard
+     → Over filtre v sidebar (reset na "All")
+     → Regenerate dataset v Config
+
+  ❌ Timeline sa nezobrazuje
+     → Vyber iný hovor (niektory môžu mať málo segmentov)
+
+  ❌ Port 8501 už používaný
+     → streamlit run app.py --server.port 8502
+
+
+═══════════════════════════════════════════════════════════════════════
+  DEMO SCENÁR (PRE DECISION MAKERS)
+═══════════════════════════════════════════════════════════════════════
+
+  1. ÚVOD (1 min)
+     "Toto je CC Analytics dashboard s live dátami z 200 hovorov."
+  
+  2. OVERVIEW WIDGETS (3 min)
+     "10 kľúčových metrík na jeden pohľad:"
+     - AES: Celková efektivita agenta (ukáž gauge)
+     - Sentiment Journey: Ako sa zákazník cíti (ukáž line)
+     - FCR: Riešime na prvý kontakt? (ukáž gauge vs benchmark)
+     - Compliance: Kde máme riziko? (ukáž violations)
+  
+  3. AGENT PERFORMANCE (2 min)
+     Prejdi na Agents tab
+     - Ukáž top performers (ACI > 85)
+     - Vyber agenta → jeho trend
+     - "Vidíme konzistenciu vs. variabilitu"
+  
+  4. CALL TIMELINE (3 min)
+     Prejdi na Calls tab
+     - Vyber complaint call
+     - Ukáž timeline:
+       * Agent vs customer speaking
+       * Silence periods (hold = problém)
+       * Sentiment markers (Start negative → End positive)
+     - "Real-time vizualizácia každého hovoru"
+  
+  5. FILTROVANIE & INSIGHTS (1 min)
+     - Filtruj topic="technical" → ukáž dlhší AHT
+     - Filtruj team="Support" → ukáž ich FCR
+     - "Môžeme drill-down do ľubovoľného segmentu"
+  
+  6. ZÁVER (30 sec)
+     "Všetko offline, syntetické dáta. Ready pre integráciu
+      s ElevenLabs STT a vašou AutoQA platformou."
+
+
+═══════════════════════════════════════════════════════════════════════
+  TO je všetko! Enjoy your CC Analytics Dashboard! 🚀
+═══════════════════════════════════════════════════════════════════════
