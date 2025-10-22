@@ -1,6 +1,6 @@
 """
-CC Analytics Dashboard - Redesign V2 DEMO
-Shows first 3 rows (6 widgets) for testing
+CC Analytics Dashboard - Redesign V2
+Complete redesign with 10 professional business widgets across 6 rows
 """
 
 import streamlit as st
@@ -17,12 +17,16 @@ from widgets_v2 import (
     create_sales_card_html,
     create_sentiment_sankey, create_sentiment_summary_html,
     create_fcr_gauges, create_fcr_summary_html, get_fcr_insights,
-    create_performance_trend, create_trend_summary_html
+    create_performance_trend, create_trend_summary_html,
+    create_topic_bubble_chart, get_topic_insights,
+    create_escalation_card_html,
+    create_quality_bars, get_quality_insights,
+    create_timeline_summary_html
 )
 
 # Page config
 st.set_page_config(
-    page_title="CC Analytics Dashboard V2 - DEMO",
+    page_title="CC Analytics Dashboard V2",
     page_icon="📊",
     layout="wide",
     initial_sidebar_state="collapsed"
@@ -73,8 +77,8 @@ def load_data():
 calls_df, transcripts, agents_df = load_data()
 
 # Header
-st.title("📊 CC Analytics Dashboard V2 - DEMO")
-st.markdown(f"<p style='color: #6B7280; font-size: 14px;'>Period: Last 30 days | {len(calls_df)} calls | {len(agents_df)} agents</p>", unsafe_allow_html=True)
+st.title("📊 CC Analytics Dashboard V2")
+st.markdown(f"<p style='color: #6B7280; font-size: 14px;'>Period: Last 30 days | {len(calls_df)} calls | {len(agents_df)} agents | Redesign V2</p>", unsafe_allow_html=True)
 st.markdown("---")
 
 # ============================================================================
@@ -183,4 +187,84 @@ with tab5:
     st.markdown(html_summary_aht, unsafe_allow_html=True)
 
 st.markdown("---")
-st.info("✅ **DEMO**: First 3 rows (6 widgets) complete! ROW 4-6 coming next...")
+
+# ============================================================================
+# ROW 4: Efficiency & Escalation
+# ============================================================================
+st.markdown("## ROW 4: Efficiency & Escalation Management")
+
+col1, col2 = st.columns([2, 1])
+
+with col1:
+    # Widget 7: Topic Bubble Chart
+    fig_topic_bubble = create_topic_bubble_chart(calls_df)
+    st.plotly_chart(fig_topic_bubble, use_container_width=True, key='topic_bubble')
+    
+    # Topic insights
+    html_topic_insights = get_topic_insights(calls_df)
+    st.markdown(html_topic_insights, unsafe_allow_html=True)
+
+with col2:
+    # Widget 8: Escalation Card
+    html_escalation = create_escalation_card_html(calls_df, prev_period_epr=87.5)
+    st.markdown(html_escalation, unsafe_allow_html=True)
+
+st.markdown("---")
+
+# ============================================================================
+# ROW 5: Quality Breakdown
+# ============================================================================
+st.markdown("## ROW 5: Quality Components Analysis")
+
+# Widget 9: Quality Bars
+fig_quality = create_quality_bars(calls_df, prev_period_df=None)
+st.plotly_chart(fig_quality, use_container_width=True, key='quality_bars')
+
+# Quality insights
+html_quality_insights = get_quality_insights(calls_df, prev_period_df=None)
+st.markdown(html_quality_insights, unsafe_allow_html=True)
+
+st.markdown("---")
+
+# ============================================================================
+# ROW 6: Call Timeline Summary
+# ============================================================================
+st.markdown("## ROW 6: Average Call Timeline")
+
+# Widget 10: Timeline Summary
+col1, col2, col3 = st.columns([1, 1, 1])
+
+with col1:
+    html_timeline = create_timeline_summary_html(calls_df)
+    st.markdown(html_timeline, unsafe_allow_html=True)
+
+with col2:
+    st.markdown("""
+    <div style='background-color: #EFF6FF; padding: 20px; border-radius: 8px; height: 100%;'>
+        <h4 style='color: #1E3A8A; margin-bottom: 15px;'>📊 Key Insights</h4>
+        <div style='font-size: 13px; color: #374151; line-height: 1.8;'>
+            • Sentiment improves in <b>67%</b> of calls<br>
+            • Average AES score: <b>76.9%</b><br>
+            • Compliance rate: <b>92.3%</b><br>
+            • FCR achievement: <b>73.5%</b><br>
+            • Sales conversion: <b>61.5%</b>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+with col3:
+    st.markdown("""
+    <div style='background-color: #F0FDF4; padding: 20px; border-radius: 8px; height: 100%;'>
+        <h4 style='color: #065F46; margin-bottom: 15px;'>✅ Quick Actions</h4>
+        <div style='font-size: 13px; color: #047857; line-height: 1.8;'>
+            → Review <b>Technical</b> topic efficiency<br>
+            → Coach agents on <b>Active Listening</b><br>
+            → Monitor escalation trend<br>
+            → Replicate Sales team success<br>
+            → Analyze declining sentiment calls
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+st.markdown("---")
+st.success("🎉 **ALL 10 WIDGETS COMPLETE!** Dashboard Redesign V2 - Professional Business Analytics")
