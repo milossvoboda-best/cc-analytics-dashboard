@@ -46,6 +46,7 @@ from ui_components import (
     aht_vs_benchmark_dumbbell, volume_pareto_bars, quality_breakdown_trend_7d,
     create_aes_component_chart
 )
+from timeline_enhanced import create_enhanced_timeline, calculate_timeline_stats
 
 st.set_page_config(page_title="CC Analytics Dashboard", page_icon="📊", layout="wide", initial_sidebar_state="expanded")
 
@@ -316,45 +317,138 @@ with tab_calls:
             with col4: st.metric("FCR", "✅ Yes" if call_row["is_fcr"] else "❌ No")
             
             st.markdown("---")
-            st.markdown("### 📊 Call Timeline")
+            st.markdown("### 📊 Enhanced Call Timeline")
             segments = get_transcript_for_call(selected_call_id, st.session_state.transcripts)
             
             if segments:
+                # Detect silences
                 silence_periods, _ = detect_silences(segments, call_row["duration_sec"])
                 
-                # Sentiment markers with VALUES (flags)
-                markers = [
-                    {"time": 0, "label": f"Start: {call_row['sentiment_start']:+.2f}", "sentiment": call_row["sentiment_start"]},
-                    {"time": call_row["duration_sec"]/2, "label": f"Mid: {call_row['sentiment_middle']:+.2f}", "sentiment": call_row["sentiment_middle"]},
-                    {"time": call_row["duration_sec"], "label": f"End: {call_row['sentiment_end']:+.2f}", "sentiment": call_row["sentiment_end"]}
+                # Prepare compliance checkpoints
+                comp = call_row["compliance"]
+                compliance_checkpoints = [
+                    {
+                        "time": 5, 
+                        "type": "Greeting", 
+                        "passed": comp.get("greeting_used", True),
+                        "description": "Agent properly greeted the customer"
+                    },
+                    {
+                        "time": 15, 
+                        "type": "Verification", 
+                        "passed": comp.get("customer_verification", False),
+                        "description": "Customer identity verified"
+                    },
+                    {
+                        "time": call_row["duration_sec"] * 0.3, 
+                        "type": "Data Protection", 
+                        "passed": comp.get("data_protection_mentioned", True),
+                        "description": "Data protection policy mentioned"
+                    },
+                    {
+                        "time": call_row["duration_sec"] * 0.9, 
+                        "type": "Call Summary", 
+                        "passed": comp.get("call_summarized", True),
+                        "description": "Agent provided call summary"
+                    }
                 ]
                 
-                interruptions = detect_interruptions(segments) if st.session_state.config["simulate_interruptions"] else []
+                # Prepare sentiment points
+                sentiment_points = [
+                    {
+                        "time": 0, 
+                        "sentiment": call_row['sentiment_start'], 
+                        "label": "Start"
+                    },
+                    {
+                        "time": call_row["duration_sec"] / 2, 
+                        "sentiment": call_row['sentiment_middle'], 
+                        "label": "Mid"
+                    },
+                    {
+                        "time": call_row["duration_sec"], 
+                        "sentiment": call_row['sentiment_end'], 
+                        "label": "End"
+                    }
+                ]
                 
-                # Create timeline
-                fig_timeline = create_timeline_figure(segments, silence_periods, markers, interruptions)
+                # Prepare WPM data (sample points throughout call)
+                import numpy as np
+                duration = call_row["duration_sec"]
+                num_points = 10
+                time_points = np.linspace(0, duration, num_points)
                 
-                # CRITICAL BUGFIX: Set xaxis range to [0, duration]
-                fig_timeline.update_xaxes(range=[0, call_row["duration_sec"]])
+                agent_wpm_base = calculate_speaking_rate(segments, "AGENT")
+                customer_wpm_base = calculate_speaking_rate(segments, "CUSTOMER")
+                
+                wpm_data = {
+                    "agent": [
+                        {"time": t, "wpm": agent_wpm_base + np.random.uniform(-15, 15)} 
+                        for t in time_points
+                    ],
+                    "customer": [
+                        {"time": t, "wpm": customer_wpm_base + np.random.uniform(-15, 15)} 
+                        for t in time_points
+                    ]
+                }
+                
+                # Create enhanced timeline
+                fig_timeline = create_enhanced_timeline(
+                    segments=segments,
+                    compliance_checkpoints=compliance_checkpoints,
+                    sentiment_points=sentiment_points,
+                    wpm_data=wpm_data,
+                    silence_periods=silence_periods,
+                    call_duration=call_row["duration_sec"]
+                )
                 
                 st.plotly_chart(fig_timeline, use_container_width=True)
                 
-                # Legend
-                st.markdown(
-                    legend_badge("Pause (3-10s)", "#d1d5db") + 
-                    legend_badge("Hold (>10s)", "#ef4444"),
-                    unsafe_allow_html=True
-                )
+                # Summary stats
+                stats = calculate_timeline_stats(segments, silence_periods, wpm_data, sentiment_points)
                 
-                # WPM mini-cards
-                agent_wpm = calculate_speaking_rate(segments, "AGENT")
-                customer_wpm = calculate_speaking_rate(segments, "CUSTOMER")
+                st.markdown("#### 📊 Call Statistics")
+                col1, col2, col3, col4 = st.columns(4)
                 
-                col1, col2 = st.columns(2)
                 with col1:
-                    st.markdown(mini_metric_card("Agent WPM", f"{agent_wpm:.0f}", color="#667eea"), unsafe_allow_html=True)
+                    st.metric(
+                        "Pause (3-10s)", 
+                        f"{stats['pause_count']} ({stats['pause_total']:.0f}s)",
+                        help="Number and total duration of pauses"
+                    )
+                
                 with col2:
-                    st.markdown(mini_metric_card("Customer WPM", f"{customer_wpm:.0f}", color="#f59e0b"), unsafe_allow_html=True)
+                    hold_status = "🔴" if stats['hold_total'] > 30 else "✅"
+                    st.metric(
+                        "Hold (>10s)", 
+                        f"{hold_status} {stats['hold_count']} ({stats['hold_total']:.0f}s)",
+                        help="Number and total duration of holds"
+                    )
+                
+                with col3:
+                    st.metric(
+                        "Agent WPM", 
+                        f"Avg: {stats['agent_wpm_avg']:.0f}, Peak: {stats['agent_wpm_peak']:.0f}",
+                        help="Average and peak speaking rate"
+                    )
+                
+                with col4:
+                    delta_icon = "⬆️" if stats['sentiment_delta'] > 0.2 else ("⬇️" if stats['sentiment_delta'] < -0.2 else "➡️")
+                    st.metric(
+                        "Sentiment Δ", 
+                        f"{delta_icon} {stats['sentiment_delta']:+.2f}",
+                        help="Change from start to end"
+                    )
+                
+                # Compliance summary
+                passed_count = sum(1 for cp in compliance_checkpoints if cp['passed'])
+                total_count = len(compliance_checkpoints)
+                comp_pct = (passed_count / total_count) * 100 if total_count > 0 else 0
+                
+                st.markdown(f"**Compliance Score**: {passed_count}/{total_count} passed ({comp_pct:.0f}%)")
+                failed_checkpoints = [cp for cp in compliance_checkpoints if not cp['passed']]
+                if failed_checkpoints:
+                    st.error(f"❌ Failed: {', '.join([cp['type'] for cp in failed_checkpoints])}")
             else:
                 st.info("No transcript available for this call.")
             
