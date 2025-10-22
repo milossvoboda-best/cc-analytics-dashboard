@@ -253,14 +253,15 @@ st.divider()
 st.markdown("#### 📞 Call Timeline with Compliance Checkpoints")
 
 # Call selector
-call_ids = filtered_df['call_id'].tolist()
-selected_call_id = st.selectbox("Select Call to Analyze:", call_ids, key='call_selector')
+if len(filtered_df) > 0:
+    call_ids = filtered_df['call_id'].tolist()
+    selected_call_id = st.selectbox("Select Call to Analyze:", call_ids, key='call_selector')
+    
+    # Get call data
+    selected_call = filtered_df[filtered_df['call_id'] == selected_call_id].iloc[0]
+    call_transcript = [t for t in transcripts if t.get('call_id') == selected_call_id]
 
-# Get call data
-selected_call = filtered_df[filtered_df['call_id'] == selected_call_id].iloc[0]
-call_transcript = [t for t in transcripts if t['call_id'] == selected_call_id]
-
-if call_transcript:
+if len(filtered_df) > 0 and call_transcript:
     transcript = call_transcript[0]
     segments = transcript['segments']
     
@@ -431,6 +432,8 @@ if call_transcript:
         passed = sum([1 for _, status, _ in checkpoints if status])
         st.metric("Compliance", f"{passed}/{len(checkpoints)}")
         st.caption(f"AES: {selected_call['aes_score']:.1f}% | AutoQA: {selected_call['autoqa_score']:.1f}%")
+else:
+    st.info("📞 No transcript available for selected call. Please select another call or adjust filters.")
 
 st.divider()
 
