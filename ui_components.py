@@ -770,9 +770,16 @@ def sentiment_transition_chart(df: pd.DataFrame) -> go.Figure:
         margin=dict(l=40, r=20, t=20, b=40),
         paper_bgcolor='rgba(0,0,0,0)',
         plot_bgcolor='rgba(0,0,0,0)',
-        xaxis=dict(title="Start Sentiment", tickfont=dict(size=12)),
-        yaxis=dict(title="% of Calls", tickfont=dict(size=12)),
-        legend=dict(title="End State", orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+        xaxis=dict(title_text="Start Sentiment", tickfont=dict(size=12)),
+        yaxis=dict(title_text="% of Calls", tickfont=dict(size=12)),
+        legend=dict(
+            title_text="End State",
+            orientation="h", 
+            yanchor="bottom", 
+            y=1.02, 
+            xanchor="right", 
+            x=1
+        ),
         font=dict(family='Inter')
     )
     
