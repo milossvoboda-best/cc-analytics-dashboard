@@ -259,11 +259,11 @@ if len(filtered_df) > 0:
     
     # Get call data
     selected_call = filtered_df[filtered_df['call_id'] == selected_call_id].iloc[0]
-    call_transcript = [t for t in transcripts if t.get('call_id') == selected_call_id]
+    # transcripts is a DICT, not a list
+    transcript = transcripts.get(selected_call_id)
 
-if len(filtered_df) > 0 and call_transcript:
-    transcript = call_transcript[0]
-    segments = transcript['segments']
+if len(filtered_df) > 0 and transcript:
+    segments = transcript.get('segments', [])
     
     # Create Gantt chart + WPM overlay with sentiment gradient background
     fig = make_subplots(
