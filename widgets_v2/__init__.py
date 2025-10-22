@@ -9,6 +9,10 @@ from .sales_card import create_sales_card_html, calculate_sales_metrics
 from .sentiment_sankey import create_sentiment_sankey, create_sentiment_summary_html, calculate_sentiment_flows
 from .fcr_gauges import create_fcr_gauges, create_fcr_summary_html, get_fcr_insights, calculate_fcr_metrics
 from .performance_trend import create_performance_trend, create_trend_summary_html, prepare_trend_data
+from .topic_bubble import create_topic_bubble_chart, get_topic_insights, calculate_topic_efficiency
+from .escalation_card import create_escalation_card_html, calculate_escalation_metrics
+from .quality_bars import create_quality_bars, get_quality_insights, calculate_quality_components
+from .timeline_simple import create_timeline_summary_html, calculate_timeline_summary
 
 __all__ = [
     # ROW 1
@@ -31,4 +35,17 @@ __all__ = [
     'create_performance_trend',
     'create_trend_summary_html',
     'prepare_trend_data',
+    # ROW 4
+    'create_topic_bubble_chart',
+    'get_topic_insights',
+    'calculate_topic_efficiency',
+    'create_escalation_card_html',
+    'calculate_escalation_metrics',
+    # ROW 5
+    'create_quality_bars',
+    'get_quality_insights',
+    'calculate_quality_components',
+    # ROW 6
+    'create_timeline_summary_html',
+    'calculate_timeline_summary',
 ]
