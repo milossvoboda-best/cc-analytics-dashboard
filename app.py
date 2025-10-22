@@ -48,6 +48,7 @@ from ui_components import (
 )
 from timeline_enhanced import create_enhanced_timeline, calculate_timeline_stats
 from aes_widget import create_aes_spider_trend, get_aes_status_card, generate_mock_7day_trend
+from csj_sankey import create_sentiment_sankey, calculate_sentiment_summary
 
 st.set_page_config(page_title="CC Analytics Dashboard", page_icon="📊", layout="wide", initial_sidebar_state="expanded")
 
@@ -226,17 +227,45 @@ with tab_overview:
         
         st.markdown("---")
         
-        # ROW 2: Sentiment Journey + KPIs
+        # ROW 2: Sentiment Journey Sankey
         st.subheader("2️⃣ Customer Sentiment Journey Analysis")
-        col1, col2 = st.columns([2, 1])
+        
+        col1, col2 = st.columns([3, 1])
         with col1:
-            fig_sentiment = sentiment_transition_chart(filtered_calls)
-            st.plotly_chart(fig_sentiment, use_container_width=True)
+            # Create Sankey diagram
+            fig_sankey = create_sentiment_sankey(filtered_calls)
+            st.plotly_chart(fig_sankey, use_container_width=True)
+        
         with col2:
-            improvement_kpis = compute_sentiment_improvement_kpis(filtered_calls)
-            st.metric("Improving", f"{improvement_kpis['pct_improving']}%", delta=None)
-            st.metric("Stable", f"{improvement_kpis['pct_stable']}%", delta=None)
-            st.metric("Declining", f"{improvement_kpis['pct_deteriorating']}%", delta=None)
+            # Summary metrics
+            summary = calculate_sentiment_summary(filtered_calls)
+            
+            st.markdown("#### 📊 Summary")
+            st.metric(
+                "😠→😊 IMPROVING",
+                f"{summary['improving_pct']}%",
+                delta=f"{summary['improving_count']} calls",
+                delta_color="normal"
+            )
+            st.success(f"✅ Strong positive trend")
+            
+            st.metric(
+                "😐→😐 STABLE",
+                f"{summary['stable_pct']}%",
+                delta=f"{summary['stable_count']} calls",
+                delta_color="off"
+            )
+            
+            st.metric(
+                "😊→😠 DECLINING",
+                f"{summary['declining_pct']}%",
+                delta=f"{summary['declining_count']} calls",
+                delta_color="inverse"
+            )
+            if summary['declining_pct'] > 10:
+                st.warning(f"⚠️ Monitor decline trend")
+            
+            st.info(f"💡 Most common: {summary['top_flow']} ({summary['top_flow_count']} calls)")
         
         st.markdown("**First Contact Resolution**")
         col_a, col_b = st.columns(2)
