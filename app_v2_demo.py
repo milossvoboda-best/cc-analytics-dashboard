@@ -259,11 +259,10 @@ if len(filtered_df) > 0:
     
     # Get call data
     selected_call = filtered_df[filtered_df['call_id'] == selected_call_id].iloc[0]
-    # transcripts is a DICT, not a list
-    transcript = transcripts.get(selected_call_id)
+    # transcripts is a DICT where values are LISTS of segments directly
+    segments = transcripts.get(selected_call_id, [])
 
-if len(filtered_df) > 0 and transcript:
-    segments = transcript.get('segments', [])
+if len(filtered_df) > 0 and segments:
     
     # Create Gantt chart + WPM overlay with sentiment gradient background
     fig = make_subplots(
@@ -278,14 +277,14 @@ if len(filtered_df) > 0 and transcript:
     call_duration = selected_call['duration_sec']
     
     for seg in segments:
-        start_time = seg['start']
-        end_time = seg['end']
+        start_time = seg['start_time']
+        end_time = seg['end_time']
         speaker = seg['speaker']
         text_preview = seg['text'][:30] + "..." if len(seg['text']) > 30 else seg['text']
         wpm = seg.get('wpm', 140)
         
-        speaker_row = 'AGENT' if speaker == 'Agent' else 'CUSTOMER'
-        color = '#2196F3' if speaker == 'Agent' else '#FF9800'
+        speaker_row = speaker  # Already 'AGENT' or 'CUSTOMER' in data
+        color = '#2196F3' if speaker == 'AGENT' else '#FF9800'
         
         fig.add_trace(go.Bar(
             x=[end_time - start_time],
@@ -341,10 +340,10 @@ if len(filtered_df) > 0 and transcript:
     customer_wpms = []
     
     for seg in segments:
-        mid_time = (seg['start'] + seg['end']) / 2
+        mid_time = (seg['start_time'] + seg['end_time']) / 2
         wpm = seg.get('wpm', 140)
         
-        if seg['speaker'] == 'Agent':
+        if seg['speaker'] == 'AGENT':
             agent_times.append(mid_time)
             agent_wpms.append(wpm)
         else:
