@@ -197,62 +197,37 @@ with col2:
 st.divider()
 
 # ============================================================================
-# ROW 3: QA COMPONENTS TREND + TOPIC EFFICIENCY
+# ROW 3: PERFORMANCE TREND + TOPIC EFFICIENCY
 # ============================================================================
 
 col1, col2 = st.columns([1.5, 1])
 
 with col1:
-    st.markdown("#### Quality Components Trend (30 Days)")
-    st.caption("📈 Track improvement/decline of individual QA metrics over time")
+    st.markdown("#### Performance Trend (30 Days)")
     
-    # Create line chart showing QA components over time (separate lines)
-    fig = go.Figure()
+    tab1, tab2, tab3, tab4 = st.tabs(["AES", "AutoQA", "FCR", "Sentiment"])
     
-    # Simulate 30 days of data for each component
-    dates = pd.date_range(end=datetime.now(), periods=30, freq='D')
+    from widgets_v2.performance_trend import create_performance_trend
     
-    components_data = {
-        'Greeting & ID': [88 + i*0.1 for i in range(30)],
-        'Active Listening': [75 + i*0.05 for i in range(30)],
-        'Empathy': [68 - i*0.02 for i in range(30)],
-        'Solution Offered': [72 + i*0.08 for i in range(30)],
-        'Professional Tone': [85 + i*0.03 for i in range(30)],
-        'Positive Language': [65 + i*0.04 for i in range(30)],
-        'Call Control': [70 + i*0.06 for i in range(30)],
-        'Proper Closing': [80 + i*0.05 for i in range(30)]
-    }
+    with tab1:
+        fig = create_performance_trend(filtered_df, metric='AES', target=75.0, days=30)
+        fig.update_layout(height=220, margin=dict(l=30, r=10, t=10, b=30))
+        st.plotly_chart(fig, use_container_width=True, key='trend_aes')
     
-    colors = ['#4CAF50', '#8BC34A', '#CDDC39', '#FFEB3B', '#FFC107', '#FF9800', '#FF5722', '#F44336']
+    with tab2:
+        fig = create_performance_trend(filtered_df, metric='AutoQA', target=80.0, days=30)
+        fig.update_layout(height=220, margin=dict(l=30, r=10, t=10, b=30))
+        st.plotly_chart(fig, use_container_width=True, key='trend_autoqa')
     
-    # Add each component as separate line
-    for i, (component, data) in enumerate(components_data.items()):
-        fig.add_trace(go.Scatter(
-            x=dates, y=data,
-            mode='lines+markers',
-            name=component,
-            line=dict(width=2.5, color=colors[i]),
-            marker=dict(size=4)
-        ))
+    with tab3:
+        fig = create_performance_trend(filtered_df, metric='FCR', target=75.0, days=30)
+        fig.update_layout(height=220, margin=dict(l=30, r=10, t=10, b=30))
+        st.plotly_chart(fig, use_container_width=True, key='trend_fcr')
     
-    # Add target line at 80% for individual components
-    fig.add_trace(go.Scatter(
-        x=dates, y=[80]*30,
-        mode='lines',
-        name='Target (80%)',
-        line=dict(color='#000000', width=2, dash='dash')
-    ))
-    
-    fig.update_layout(
-        height=280,
-        hovermode='x unified',
-        yaxis_title='Score (%)',
-        yaxis=dict(range=[50, 100]),
-        showlegend=True,
-        legend=dict(orientation='h', yanchor='top', y=-0.2, font=dict(size=10))
-    )
-    
-    st.plotly_chart(fig, use_container_width=True)
+    with tab4:
+        fig = create_performance_trend(filtered_df, metric='Sentiment', target=60.0, days=30)
+        fig.update_layout(height=220, margin=dict(l=30, r=10, t=10, b=30))
+        st.plotly_chart(fig, use_container_width=True, key='trend_sent')
 
 with col2:
     st.markdown("#### Topic Efficiency")
