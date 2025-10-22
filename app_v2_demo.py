@@ -206,7 +206,7 @@ with col1:
     st.markdown("#### Quality Components Trend (30 Days)")
     st.caption("📈 Track improvement/decline of individual QA metrics over time")
     
-    # Create stacked area chart showing QA components over time
+    # Create line chart showing QA components over time (separate lines)
     fig = go.Figure()
     
     # Simulate 30 days of data for each component
@@ -225,30 +225,31 @@ with col1:
     
     colors = ['#4CAF50', '#8BC34A', '#CDDC39', '#FFEB3B', '#FFC107', '#FF9800', '#FF5722', '#F44336']
     
+    # Add each component as separate line
     for i, (component, data) in enumerate(components_data.items()):
         fig.add_trace(go.Scatter(
             x=dates, y=data,
-            mode='lines',
+            mode='lines+markers',
             name=component,
-            stackgroup='one',
-            fillcolor=colors[i],
-            line=dict(width=0.5, color=colors[i])
+            line=dict(width=2.5, color=colors[i]),
+            marker=dict(size=4)
         ))
     
-    # Add target line
+    # Add target line at 80% for individual components
     fig.add_trace(go.Scatter(
-        x=dates, y=[600]*30,
+        x=dates, y=[80]*30,
         mode='lines',
-        name='Target (600)',
-        line=dict(color='black', width=2, dash='dash')
+        name='Target (80%)',
+        line=dict(color='#000000', width=2, dash='dash')
     ))
     
     fig.update_layout(
         height=280,
         hovermode='x unified',
-        yaxis_title='Total QA Score',
+        yaxis_title='Score (%)',
+        yaxis=dict(range=[50, 100]),
         showlegend=True,
-        legend=dict(orientation='h', yanchor='top', y=-0.2)
+        legend=dict(orientation='h', yanchor='top', y=-0.2, font=dict(size=10))
     )
     
     st.plotly_chart(fig, use_container_width=True)
