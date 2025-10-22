@@ -59,13 +59,15 @@ CUSTOMER_PHRASES_EN = [
 ]
 
 TOPICS = {
-    "billing": {"complexity": 2, "avg_duration": 240, "sentiment_start": -0.3},
-    "technical": {"complexity": 4, "avg_duration": 480, "sentiment_start": -0.5},
-    "product_info": {"complexity": 2, "avg_duration": 180, "sentiment_start": 0.2},
-    "complaint": {"complexity": 3, "avg_duration": 420, "sentiment_start": -0.6},
-    "account": {"complexity": 2, "avg_duration": 210, "sentiment_start": -0.1},
-    "order": {"complexity": 3, "avg_duration": 270, "sentiment_start": 0.1},
+    "billing": {"complexity": 2, "avg_duration": 240, "sentiment_start": -0.3, "benchmark_aht": 4.2},
+    "technical": {"complexity": 4, "avg_duration": 480, "sentiment_start": -0.5, "benchmark_aht": 8.5},
+    "product_info": {"complexity": 2, "avg_duration": 180, "sentiment_start": 0.2, "benchmark_aht": 3.1},
+    "complaint": {"complexity": 3, "avg_duration": 420, "sentiment_start": -0.6, "benchmark_aht": 7.0},
+    "account": {"complexity": 2, "avg_duration": 210, "sentiment_start": -0.1, "benchmark_aht": 3.8},
+    "order": {"complexity": 3, "avg_duration": 270, "sentiment_start": 0.1, "benchmark_aht": 4.5},
 }
+
+SALES_PRODUCTS = ["Premium Plan", "Extended Warranty", "Add-on Service", "Upgrade Package", "Bundle Deal"]
 
 TEAMS = ["Sales", "Support", "Tech", "Retention"]
 
@@ -149,12 +151,26 @@ def generate_transcript_segments(
             overlap = random.uniform(0.2, 0.8)
             start_time = max(0, start_time - overlap)
         
+        # Calculate WPM (Words Per Minute) for this segment
+        duration_minutes = segment_duration / 60
+        wpm = int(word_count / duration_minutes) if duration_minutes > 0 else 0
+        
+        # Add realistic variance to WPM
+        if speaker == "AGENT":
+            base_wpm = 145  # Average agent WPM
+        else:
+            base_wpm = 138  # Average customer WPM
+        
+        # Vary WPM by ±20% from base
+        wpm = int(base_wpm + random.uniform(-0.2 * base_wpm, 0.2 * base_wpm))
+        
         segments.append({
             "speaker": speaker,
             "text": text,
             "start_time": round(start_time, 2),
             "end_time": round(end_time, 2),
             "word_count": word_count,
+            "wpm": wpm,  # ✅ REAL WPM calculated from segment
         })
         
         # Pauza medzi segmentami (0.5-2 sekundy)
@@ -207,6 +223,48 @@ def detect_interruptions(segments: List[Dict]) -> List[Dict]:
             })
     
     return interruptions
+
+
+def generate_sales_opportunity(topic: str) -> Dict:
+    """
+    Generuje sales opportunity (len pre Sales team!).
+    
+    Returns:
+        Dict s type, success, value, product alebo None
+    """
+    # 70% šanca že bola opportunity
+    if random.random() > 0.7:
+        return None
+    
+    # Typ opportunity
+    opp_types = ['upsell', 'cross_sell', 'closing']
+    opp_type = random.choice(opp_types)
+    
+    # Success rate závisí od typu
+    success_rates = {
+        'upsell': 0.35,
+        'cross_sell': 0.42,
+        'closing': 0.61,
+    }
+    success = random.random() < success_rates[opp_type]
+    
+    # Hodnota opportunity (EUR)
+    value_ranges = {
+        'upsell': (50, 200),
+        'cross_sell': (30, 150),
+        'closing': (100, 500),
+    }
+    value = random.uniform(*value_ranges[opp_type])
+    
+    # Produkt
+    product = random.choice(SALES_PRODUCTS)
+    
+    return {
+        'type': opp_type,
+        'success': success,
+        'value': round(value, 2),
+        'product': product
+    }
 
 
 def generate_autoqa_compliance(topic: str, language: str) -> Dict:
@@ -441,6 +499,20 @@ def generate_dataset(
         topic_data = generate_autoqa_topic(topic, language)
         sentiment_start, sentiment_middle, sentiment_end = generate_sentiment_journey(topic, resolution)
         
+        # ✅ Sales Opportunity (LEN pre Sales team!)
+        sales_opportunity = None
+        if team == "Sales":
+            sales_opportunity = generate_sales_opportunity(topic)
+        
+        # ✅ AutoQA Score (separate from quality_score)
+        # Score 0-100 based on compliance + quality
+        compliance_score = sum(1 for v in compliance.values() if isinstance(v, bool) and v) / 9 * 100
+        quality_score_autoqa = quality["quality_score"]  # Already 0-100
+        autoqa_score = round((compliance_score * 0.6 + quality_score_autoqa * 0.4), 1)
+        
+        # ✅ Benchmark AHT for comparison
+        benchmark_aht = TOPICS[topic]["benchmark_aht"]
+        
         call_record = {
             "call_id": call_id,
             "timestamp": timestamp,
@@ -458,11 +530,15 @@ def generate_dataset(
             "sentiment_start": sentiment_start,
             "sentiment_middle": sentiment_middle,
             "sentiment_end": sentiment_end,
-            # Store jako JSON/dict columns
+            # Store ako JSON/dict columns
             "compliance": compliance,
             "resolution": resolution,
             "quality": quality,
             "topic_data": topic_data,
+            # ✅ NEW FIELDS for redesign
+            "sales_opportunity": sales_opportunity,  # None if not Sales team
+            "autoqa_score": autoqa_score,  # 0-100 (separate metric)
+            "benchmark_aht": benchmark_aht,  # Minutes for topic comparison
         }
         
         calls.append(call_record)
