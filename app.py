@@ -265,6 +265,19 @@ with tab_overview:
             if summary['declining_pct'] > 10:
                 st.warning(f"⚠️ Monitor decline trend")
             
+            # Breakdown declining calls
+            if summary['declining_count'] > 0:
+                with st.expander("🔍 Declining Call Breakdown"):
+                    if summary['declining_by_topic']:
+                        st.markdown("**Top Topics:**")
+                        for item in summary['declining_by_topic']:
+                            st.markdown(f"- {item['topic']}: {item['count']} calls")
+                    
+                    if summary['declining_by_agent']:
+                        st.markdown("**Top Agents:**")
+                        for item in summary['declining_by_agent']:
+                            st.markdown(f"- {item['agent']}: {item['count']} calls")
+            
             st.info(f"💡 Most common: {summary['top_flow']} ({summary['top_flow_count']} calls)")
         
         st.markdown("**First Contact Resolution**")

@@ -161,6 +161,8 @@ def calculate_sentiment_summary(df: pd.DataFrame) -> Dict:
             - stable_pct: % of calls with no change
             - declining_pct: % of calls with decline
             - top_flow: Most common transition
+            - declining_by_topic: Top topics for declining calls
+            - declining_by_agent: Top agents for declining calls
     """
     
     # Classify each call
@@ -189,6 +191,27 @@ def calculate_sentiment_summary(df: pd.DataFrame) -> Dict:
     top_flow = df['flow'].value_counts().iloc[0] if len(df) > 0 else 'N/A'
     top_flow_count = df['flow'].value_counts().iloc[0] if len(df) > 0 else 0
     
+    # Breakdown declining calls
+    declining_calls = df[df['delta'] < -0.2]
+    
+    if len(declining_calls) > 0:
+        # Top topics
+        if 'resolution' in declining_calls.columns:
+            topic_counts = declining_calls['resolution'].apply(lambda x: x.get('issue_category', 'Unknown')).value_counts()
+            top_topics = [{'topic': topic, 'count': count} for topic, count in topic_counts.head(3).items()]
+        else:
+            top_topics = []
+        
+        # Top agents
+        if 'agent_name' in declining_calls.columns:
+            agent_counts = declining_calls['agent_name'].value_counts()
+            top_agents = [{'agent': agent, 'count': count} for agent, count in agent_counts.head(3).items()]
+        else:
+            top_agents = []
+    else:
+        top_topics = []
+        top_agents = []
+    
     return {
         'improving_pct': round((improving / total) * 100, 1) if total > 0 else 0,
         'stable_pct': round((stable / total) * 100, 1) if total > 0 else 0,
@@ -197,5 +220,7 @@ def calculate_sentiment_summary(df: pd.DataFrame) -> Dict:
         'stable_count': stable,
         'declining_count': declining,
         'top_flow': top_flow,
-        'top_flow_count': top_flow_count
+        'top_flow_count': top_flow_count,
+        'declining_by_topic': top_topics,
+        'declining_by_agent': top_agents
     }

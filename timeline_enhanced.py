@@ -7,7 +7,6 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import pandas as pd
 import numpy as np
-from scipy.interpolate import interp1d
 from typing import List, Dict, Optional
 
 
@@ -220,14 +219,16 @@ def create_enhanced_timeline(
         times = [p['time'] for p in sentiment_points]
         sentiments = [p['sentiment'] for p in sentiment_points]
         
-        # Create smooth curve
-        if len(sentiment_points) >= 3:
-            f = interp1d(times, sentiments, kind='cubic')
-        else:
-            f = interp1d(times, sentiments, kind='linear')
-        
+        # Use numpy polyfit for smooth interpolation (more stable)
         smooth_times = np.linspace(times[0], times[-1], 100)
-        smooth_sentiments = f(smooth_times)
+        
+        if len(sentiment_points) >= 3:
+            # Quadratic fit
+            coeffs = np.polyfit(times, sentiments, 2)
+            smooth_sentiments = np.polyval(coeffs, smooth_times)
+        else:
+            # Linear interpolation
+            smooth_sentiments = np.interp(smooth_times, times, sentiments)
         
         # Determine colors based on sentiment value
         colors_gradient = []
