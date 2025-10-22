@@ -301,7 +301,7 @@ if len(filtered_df) > 0 and segments:
     
     # BOTTOM: WPM Lines with Sentiment Gradient Background + Compliance Checkpoints
     
-    # Create sentiment gradient background rectangles
+    # Create sentiment gradient background rectangles using vrects
     num_zones = 20
     zone_width = call_duration / num_zones
     
@@ -323,12 +323,10 @@ if len(filtered_df) > 0 and segments:
         else:
             color = 'rgba(22, 163, 74, 0.2)'  # Dark green
         
-        fig.add_shape(
-            type='rect',
+        fig.add_vrect(
             x0=x_start, x1=x_end,
-            y0=100, y1=200,
             fillcolor=color,
-            line=dict(width=0),
+            line_width=0,
             layer='below',
             row=2, col=1
         )
