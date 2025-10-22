@@ -138,12 +138,11 @@ def apply_filters(df):
 
 filtered_calls = apply_filters(calls_df)
 
-# Premium Header with Branding
+# Professional Header with Brand Colors
 st.markdown("""
 <div style='text-align: center; padding: 2rem 0 1rem 0;'>
-    <h1 style='font-size: 3rem; font-weight: 800; 
-               background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
-               -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    <h1 style='font-size: 2.75rem; font-weight: 800; 
+               color: #1e3a5f;
                margin-bottom: 0.5rem; letter-spacing: -0.03em;'>
         CC Analytics Platform
     </h1>
@@ -155,12 +154,12 @@ st.markdown("""
 
 st.markdown(f"""
 <div style='text-align: center; padding: 1rem; 
-            background: linear-gradient(135deg, rgba(102, 126, 234, 0.05) 0%, rgba(118, 75, 162, 0.05) 100%);
-            border-radius: 20px; margin-bottom: 2rem; 
-            border: 1px solid rgba(102, 126, 234, 0.1);
-            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.04);'>
-    <span style='font-weight: 700; color: #667eea;'>{len(filtered_calls):,}</span> calls analyzed | 
-    <span style='font-weight: 700; color: #764ba2;'>{len(filtered_calls['agent_id'].unique())}</span> agents | 
+            background: linear-gradient(135deg, rgba(212, 244, 236, 0.5) 0%, rgba(168, 230, 215, 0.3) 100%);
+            border-radius: 12px; margin-bottom: 2rem; 
+            border: 1.5px solid #a8e6d7;
+            box-shadow: 0 2px 8px rgba(30, 58, 95, 0.04);'>
+    <span style='font-weight: 700; color: #1e3a5f;'>{len(filtered_calls):,}</span> calls analyzed | 
+    <span style='font-weight: 700; color: #2d4a6f;'>{len(filtered_calls['agent_id'].unique())}</span> agents | 
     <span style='font-weight: 500; color: #64748b;'>{min_date} → {max_date}</span>
 </div>
 """, unsafe_allow_html=True)
