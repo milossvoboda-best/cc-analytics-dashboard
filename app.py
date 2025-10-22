@@ -231,6 +231,7 @@ with tab_overview:
         # ROW 2: Sentiment Journey Sankey
         st.subheader("2️⃣ Customer Sentiment Journey Analysis")
         
+        # Summary metrics on RIGHT
         col1, col2 = st.columns([2, 1])
         with col1:
             # Create Sankey diagram
@@ -268,15 +269,15 @@ with tab_overview:
             
             st.info(f"💡 Most common: {summary['top_flow']} ({summary['top_flow_count']} calls)")
         
-        # Declining breakdown table BELOW Sankey
+        # Declining breakdown table BELOW Sankey (full width)
         if summary['declining_count'] > 0:
-            st.markdown("#### 🔴 Worst Performing - Declining Calls")
+            st.markdown("### 🔴 Worst Performing - Declining Calls")
             
             col_a, col_b = st.columns(2)
             
             with col_a:
+                st.markdown("**Worst Topics:**")
                 if summary['declining_by_topic']:
-                    st.markdown("**Worst Topics:**")
                     topic_data = []
                     for item in summary['declining_by_topic']:
                         topic_data.append({
@@ -285,11 +286,11 @@ with tab_overview:
                         })
                     st.dataframe(pd.DataFrame(topic_data), use_container_width=True, hide_index=True)
                 else:
-                    st.info("No topic data available")
+                    st.info("No data")
             
             with col_b:
+                st.markdown("**Worst Agents:**")
                 if summary['declining_by_agent']:
-                    st.markdown("**Worst Agents:**")
                     agent_data = []
                     for item in summary['declining_by_agent']:
                         agent_data.append({
@@ -298,7 +299,7 @@ with tab_overview:
                         })
                     st.dataframe(pd.DataFrame(agent_data), use_container_width=True, hide_index=True)
                 else:
-                    st.info("No agent data available")
+                    st.info("No data")
         
         st.markdown("**First Contact Resolution**")
         col_a, col_b = st.columns(2)

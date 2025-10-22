@@ -31,42 +31,84 @@ def create_enhanced_timeline(
     call_duration: float
 ) -> go.Figure:
     """
-    Creates 3-layer enhanced timeline visualization.
+    Creates simple Gantt-style timeline with sentiment background gradient.
     
     Args:
-        segments: [{speaker, text, start_time, end_time, wpm}, ...]
+        segments: [{speaker, text, start_time, end_time}, ...]
         compliance_checkpoints: [{time, type, passed, description}, ...]
-        sentiment_points: [{time, sentiment, label}, ...] - typically 3 points (start, mid, end)
+        sentiment_points: [{time, sentiment, label}, ...] - typically 3 points
         wpm_data: {
             'agent': [{time, wpm}, ...],
             'customer': [{time, wpm}, ...]
         }
-        silence_periods: [{start, end, type}, ...] where type = 'pause' or 'hold'
+        silence_periods: [{start, end, type}, ...]
         call_duration: Total call length in seconds
         
     Returns:
-        Plotly Figure with 3 subplots
+        Plotly Figure with 2 subplots
     """
     
-    # Create subplot with 3 rows
+    # Create subplot with 2 rows
     fig = make_subplots(
-        rows=3, cols=1,
+        rows=2, cols=1,
         shared_xaxes=True,
-        vertical_spacing=0.08,
-        row_heights=[0.4, 0.3, 0.3],
-        subplot_titles=('📞 Speaker Timeline', '🗣️ Speaking Rate (WPM)', '💭 Sentiment Flow'),
-        specs=[[{"secondary_y": False}], [{"secondary_y": False}], [{"secondary_y": False}]]
+        vertical_spacing=0.12,
+        row_heights=[0.6, 0.4],
+        subplot_titles=('📞 Call Timeline with Compliance Checkpoints', '🗣️ Speaking Rate (WPM)'),
+        specs=[[{"secondary_y": False}], [{"secondary_y": False}]]
     )
     
     # ============================================================================
-    # ROW 1: SPEAKER TIMELINE (Gantt-style with compliance checkpoints)
+    # ROW 1: SPEAKER TIMELINE (Gantt-style) + SENTIMENT BACKGROUND GRADIENT
     # ============================================================================
     
-    # Add speaker segments
+    # First: Add sentiment gradient as BACKGROUND
+    if len(sentiment_points) >= 2:
+        times = [p['time'] for p in sentiment_points]
+        sentiments = [p['sentiment'] for p in sentiment_points]
+        
+        # Interpolate sentiment for smooth gradient
+        smooth_times = np.linspace(times[0], times[-1], 100)
+        if len(sentiment_points) >= 3:
+            coeffs = np.polyfit(times, sentiments, 2)
+            smooth_sentiments = np.polyval(coeffs, smooth_times)
+        else:
+            smooth_sentiments = np.interp(smooth_times, times, sentiments)
+        
+        # Add sentiment background as colored rectangles
+        for i in range(len(smooth_times) - 1):
+            t_start = smooth_times[i]
+            t_end = smooth_times[i + 1]
+            s_avg = (smooth_sentiments[i] + smooth_sentiments[i + 1]) / 2
+            
+            # Determine color
+            if s_avg >= 0.3:
+                bg_color = 'rgba(0, 200, 83, 0.15)'  # Green
+            elif s_avg >= 0:
+                bg_color = 'rgba(100, 221, 23, 0.15)'  # Light green
+            elif s_avg >= -0.3:
+                bg_color = 'rgba(255, 167, 38, 0.15)'  # Orange
+            else:
+                bg_color = 'rgba(239, 83, 80, 0.15)'  # Red
+            
+            fig.add_shape(
+                type="rect",
+                x0=t_start, x1=t_end,
+                y0=-0.4, y1=1.4,
+                line=dict(width=0),
+                fillcolor=bg_color,
+                layer="below",
+                row=1, col=1
+            )
+    
+    # Second: Add speaker segments (Gantt bars)
     for seg in segments:
         y_pos = 1 if seg["speaker"] == "AGENT" else 0
         color = COLORS["agent"] if seg["speaker"] == "AGENT" else COLORS["customer"]
         duration = seg["end_time"] - seg["start_time"]
+        
+        # Truncate text for hover
+        text_preview = seg.get('text', '')[:200] + ('...' if len(seg.get('text', '')) > 200 else '')
         
         fig.add_trace(go.Bar(
             x=[duration],
@@ -74,9 +116,9 @@ def create_enhanced_timeline(
             base=[seg["start_time"]],
             orientation='h',
             name=seg["speaker"],
-            marker=dict(color=color, opacity=0.85, line=dict(width=0)),
-            hovertext=f"{seg['speaker']}: {seg.get('text', '')[:100]}...",
-            hovertemplate='%{hovertext}<br>Time: %{base:.1f}s - %{x:.1f}s<extra></extra>',
+            marker=dict(color=color, opacity=0.9, line=dict(width=0.5, color='white')),
+            hovertext=f"<b>{seg['speaker']}</b><br>{text_preview}<br>Time: {seg['start_time']:.1f}s - {seg['end_time']:.1f}s",
+            hovertemplate='%{hovertext}<extra></extra>',
             showlegend=False
         ), row=1, col=1)
     
@@ -107,29 +149,32 @@ def create_enhanced_timeline(
                 row=1, col=1
             )
     
-    # Add compliance checkpoints AS ICONS on timeline
+    # Add compliance checkpoints AS TIMESTAMPS (vertical lines with labels)
     for checkpoint in compliance_checkpoints:
         icon = '✅' if checkpoint['passed'] else '❌'
         color = COLORS['excellent'] if checkpoint['passed'] else COLORS['critical']
         
-        fig.add_trace(go.Scatter(
-            x=[checkpoint['time']],
-            y=[1.5],  # Above agent bar
-            mode='markers+text',
-            marker=dict(
-                size=24,
-                color=color,
-                symbol='circle',
-                line=dict(width=2, color='white')
-            ),
-            text=icon,
-            textfont=dict(size=16, color='white'),
-            textposition='middle center',
-            hovertext=f"<b>{checkpoint['type']}</b><br>{'✅ Passed' if checkpoint['passed'] else '❌ Failed'}<br>{checkpoint.get('description', '')}",
-            hovertemplate='%{hovertext}<extra></extra>',
-            showlegend=False,
-            name=''
-        ), row=1, col=1)
+        # Vertical line
+        fig.add_shape(
+            type="line",
+            x0=checkpoint['time'], x1=checkpoint['time'],
+            y0=-0.3, y1=1.3,
+            line=dict(color=color, width=2, dash='dot'),
+            row=1, col=1
+        )
+        
+        # Label at bottom
+        fig.add_annotation(
+            x=checkpoint['time'],
+            y=-0.35,
+            text=f"{icon} {checkpoint['type']}",
+            showarrow=False,
+            font=dict(size=10, color=color, family='Inter'),
+            textangle=-45,
+            xanchor='right',
+            yanchor='top',
+            row=1, col=1
+        )
     
     # ============================================================================
     # ROW 2: SPEAKING RATE (WPM) with zones
@@ -210,97 +255,6 @@ def create_enhanced_timeline(
             hovertemplate='Customer: %{y:.0f} WPM<br>Time: %{x:.1f}s<extra></extra>'
         ), row=2, col=1)
     
-    # ============================================================================
-    # ROW 3: SENTIMENT FLOW (Smooth area chart with gradient)
-    # ============================================================================
-    
-    # Interpolate sentiment for smooth curve
-    if len(sentiment_points) >= 2:
-        times = [p['time'] for p in sentiment_points]
-        sentiments = [p['sentiment'] for p in sentiment_points]
-        
-        # Use numpy polyfit for smooth interpolation (more stable)
-        smooth_times = np.linspace(times[0], times[-1], 100)
-        
-        if len(sentiment_points) >= 3:
-            # Quadratic fit
-            coeffs = np.polyfit(times, sentiments, 2)
-            smooth_sentiments = np.polyval(coeffs, smooth_times)
-        else:
-            # Linear interpolation
-            smooth_sentiments = np.interp(smooth_times, times, sentiments)
-        
-        # Create gradient fill by adding multiple traces with different colors
-        # Divide into segments and color each based on sentiment value
-        num_segments = len(smooth_times) - 1
-        
-        for i in range(num_segments):
-            t_start = smooth_times[i]
-            t_end = smooth_times[i + 1]
-            s_avg = (smooth_sentiments[i] + smooth_sentiments[i + 1]) / 2
-            
-            # Determine fill color based on average sentiment in segment
-            if s_avg >= 0.3:
-                fill_color = 'rgba(0, 200, 83, 0.3)'  # Green
-            elif s_avg >= 0:
-                fill_color = 'rgba(100, 221, 23, 0.3)'  # Light green
-            elif s_avg >= -0.3:
-                fill_color = 'rgba(255, 167, 38, 0.3)'  # Orange
-            else:
-                fill_color = 'rgba(239, 83, 80, 0.3)'  # Red
-            
-            # Add segment as filled area
-            fig.add_trace(go.Scatter(
-                x=[t_start, t_end, t_end, t_start],
-                y=[0, 0, smooth_sentiments[i + 1], smooth_sentiments[i]],
-                fill='toself',
-                fillcolor=fill_color,
-                line=dict(width=0),
-                showlegend=False,
-                hoverinfo='skip'
-            ), row=3, col=1)
-        
-        # Add sentiment line on top (black border)
-        fig.add_trace(go.Scatter(
-            x=smooth_times,
-            y=smooth_sentiments,
-            mode='lines',
-            line=dict(color='#1e3a5f', width=2),
-            name='Sentiment',
-            hovertemplate='Sentiment: %{y:.2f}<br>Time: %{x:.1f}s<extra></extra>',
-            showlegend=False
-        ), row=3, col=1)
-        
-        # Add emoji markers at measurement points
-        for point in sentiment_points:
-            emoji_map = {
-                'Start': '😠' if point['sentiment'] < -0.3 else ('😐' if point['sentiment'] < 0.3 else '😊'),
-                'Mid': '😠' if point['sentiment'] < -0.3 else ('😐' if point['sentiment'] < 0.3 else '😊'),
-                'End': '😠' if point['sentiment'] < -0.3 else ('😐' if point['sentiment'] < 0.3 else '😊')
-            }
-            emoji = emoji_map.get(point['label'], point.get('emoji', '😐'))
-            
-            fig.add_trace(go.Scatter(
-                x=[point['time']],
-                y=[point['sentiment']],
-                mode='markers+text',
-                marker=dict(size=16, color='white', line=dict(width=2, color=COLORS['agent'])),
-                text=emoji,
-                textfont=dict(size=20),
-                textposition='top center',
-                hovertext=f"{point['label']}: {point['sentiment']:.2f}",
-                hovertemplate='%{hovertext}<extra></extra>',
-                showlegend=False
-            ), row=3, col=1)
-    
-    # Add horizontal zero line (neutral sentiment)
-    fig.add_shape(
-        type="line",
-        x0=0, x1=call_duration,
-        y0=0, y1=0,
-        line=dict(color=COLORS['neutral'], width=1, dash='dot'),
-        row=3, col=1
-    )
     
     # ============================================================================
     # LAYOUT CONFIGURATION
@@ -310,16 +264,15 @@ def create_enhanced_timeline(
     fig.update_xaxes(
         showgrid=True,
         gridcolor='#e5e7eb',
-        title_text='Time from Call Start',
-        row=3, col=1,
-        tickformat='%M:%S'  # Format as MM:SS
+        title_text='Time (seconds)',
+        row=2, col=1
     )
     
     fig.update_yaxes(
         title_text='',
         tickvals=[0, 1],
         ticktext=['CUSTOMER', 'AGENT'],
-        range=[-0.4, 1.8],
+        range=[-0.5, 1.5],
         row=1, col=1
     )
     
@@ -329,25 +282,19 @@ def create_enhanced_timeline(
         row=2, col=1
     )
     
-    fig.update_yaxes(
-        title_text='Sentiment',
-        range=[-1.2, 1.2],
-        row=3, col=1
-    )
-    
     # Overall layout
     fig.update_layout(
-        height=700,
-        margin=dict(l=80, r=40, t=80, b=50),
+        height=550,
+        margin=dict(l=80, r=40, t=80, b=80),
         plot_bgcolor='white',
         paper_bgcolor='white',
-        hovermode='x unified',
+        hovermode='closest',
         font=dict(family='Inter', size=12),
         showlegend=True,
         legend=dict(
             orientation="h",
             yanchor="top",
-            y=-0.05,
+            y=-0.12,
             xanchor="center",
             x=0.5
         )
