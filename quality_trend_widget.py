@@ -12,10 +12,11 @@ from typing import Dict, List
 
 
 COLORS = {
-    'sentiment': '#1f77b4',
-    'compliance': '#ff7f0e',
-    'resolution': '#2ca02c',
-    'quality': '#d62728',
+    'call_opening': '#1f77b4',
+    'needs_assessment': '#ff7f0e',
+    'problem_resolution': '#2ca02c',
+    'professional_communication': '#d62728',
+    'call_closing': '#9467bd',
     'aes_line': '#1e3a5f',
     'target': '#9E9E9E',
 }
@@ -49,15 +50,16 @@ def create_quality_trend_redesigned(df: pd.DataFrame, target: float = 75.0) -> g
         return fig
     
     fig = go.Figure()
-    
-    # QA Components as stacked bars
+
+    # QA Components as stacked bars - 5 hlavných QA hodnotení
     qa_components = [
-        ("Quality", "quality_pct", COLORS['quality']),
-        ("Resolution", "resolution_pct", COLORS['resolution']),
-        ("Compliance", "compliance_pct", COLORS['compliance']),
-        ("Sentiment", "sentiment_pct", COLORS['sentiment'])
+        ("Otvorenie hovoru", "call_opening_pct", COLORS['call_opening']),
+        ("Zisťovanie potrieb", "needs_assessment_pct", COLORS['needs_assessment']),
+        ("Riešenie problému", "problem_resolution_pct", COLORS['problem_resolution']),
+        ("Profesionálna komunikácia", "professional_communication_pct", COLORS['professional_communication']),
+        ("Uzavretie hovoru", "call_closing_pct", COLORS['call_closing'])
     ]
-    
+
     for name, col, color in qa_components:
         fig.add_trace(go.Bar(
             x=daily_data['date_str'],
@@ -70,9 +72,9 @@ def create_quality_trend_redesigned(df: pd.DataFrame, target: float = 75.0) -> g
     
     # Update layout
     fig.update_layout(
-        title="7-Day Quality Breakdown Trend",
-        xaxis_title="Date",
-        yaxis=dict(title="Component Score (%)", range=[0, 100]),
+        title="7-dňový trend QA kontrol",
+        xaxis_title="Dátum",
+        yaxis=dict(title="Úspešnosť QA komponentov (%)", range=[0, 100]),
         height=350,
         margin=dict(l=60, r=40, t=60, b=60),
         plot_bgcolor='white',
@@ -99,14 +101,21 @@ def create_quality_trend_redesigned(df: pd.DataFrame, target: float = 75.0) -> g
 def prepare_qa_components_daily(df: pd.DataFrame) -> pd.DataFrame:
     """
     Prepares daily QA component percentages (how many calls passed each component).
-    
+
+    Extrahuje 5 hlavných QA hodnotení z quality objektu:
+    1. Otvorenie hovoru (call_opening)
+    2. Zisťovanie potrieb (needs_assessment)
+    3. Riešenie problému (problem_resolution)
+    4. Profesionálna komunikácia (professional_communication)
+    5. Uzavretie hovoru (call_closing)
+
     Args:
         df: Raw calls dataframe with quality field
-        
+
     Returns:
         DataFrame with daily percentages for each QA component
     """
-    
+
     # Ensure we have date column
     if 'date' not in df.columns:
         # Generate mock dates for last 7 days
@@ -114,36 +123,39 @@ def prepare_qa_components_daily(df: pd.DataFrame) -> pd.DataFrame:
         dates = [(today - timedelta(days=6-i)).date() for i in range(7)]
         df = df.copy()
         df['date'] = np.random.choice(dates, size=len(df))
-    
+
     df = df.copy()
     df['date'] = pd.to_datetime(df['date']).dt.date
-    
-    # Extract QA binary flags from quality field
-    df['active_listening'] = df['quality'].apply(lambda x: 1 if x.get('active_listening', False) else 0)
-    df['empathy'] = df['quality'].apply(lambda x: 1 if x.get('empathy_shown', False) else 0)
-    df['solution_offered'] = df['quality'].apply(lambda x: 1 if x.get('solution_offered', False) else 0)
-    df['professional_tone'] = df['quality'].apply(lambda x: 1 if x.get('professional_tone', False) else 0)
-    
+
+    # Extract QA components from quality field (5 hlavných hodnotení)
+    df['call_opening'] = df['quality'].apply(lambda x: 1 if x.get('call_opening', False) else 0)
+    df['needs_assessment'] = df['quality'].apply(lambda x: 1 if x.get('needs_assessment', False) else 0)
+    df['problem_resolution'] = df['quality'].apply(lambda x: 1 if x.get('problem_resolution', False) else 0)
+    df['professional_communication'] = df['quality'].apply(lambda x: 1 if x.get('professional_communication', False) else 0)
+    df['call_closing'] = df['quality'].apply(lambda x: 1 if x.get('call_closing', False) else 0)
+
     # Group by date and calculate percentages
     daily = df.groupby('date').agg({
-        'active_listening': 'mean',
-        'empathy': 'mean',
-        'solution_offered': 'mean',
-        'professional_tone': 'mean'
+        'call_opening': 'mean',
+        'needs_assessment': 'mean',
+        'problem_resolution': 'mean',
+        'professional_communication': 'mean',
+        'call_closing': 'mean'
     }).reset_index()
-    
+
     # Convert to percentages
-    daily['sentiment_pct'] = daily['active_listening'] * 100
-    daily['compliance_pct'] = daily['empathy'] * 100
-    daily['resolution_pct'] = daily['solution_offered'] * 100
-    daily['quality_pct'] = daily['professional_tone'] * 100
-    
+    daily['call_opening_pct'] = daily['call_opening'] * 100
+    daily['needs_assessment_pct'] = daily['needs_assessment'] * 100
+    daily['problem_resolution_pct'] = daily['problem_resolution'] * 100
+    daily['professional_communication_pct'] = daily['professional_communication'] * 100
+    daily['call_closing_pct'] = daily['call_closing'] * 100
+
     # Sort by date
     daily = daily.sort_values('date')
-    
+
     # Format date for display
     daily['date_str'] = pd.to_datetime(daily['date']).dt.strftime('%b %d')
-    
+
     return daily
 
 

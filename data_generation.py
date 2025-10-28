@@ -270,40 +270,71 @@ def generate_autoqa_resolution(topic: str) -> Dict:
 
 
 def generate_autoqa_quality(topic: str, resolution: Dict) -> Dict:
-    """Syntetické AutoQA quality polia"""
-    
+    """Syntetické AutoQA quality polia - QA hodnotenie hovorov"""
+
     # Kvalita koreluje s resolution
     base_prob = 0.85 if resolution["resolution_achieved"] == "full" else 0.6
-    
+
     quality = {
+        # Legacy fields - zachované pre kompatibilitu
         "active_listening": random.random() < base_prob,
         "empathy_shown": random.random() < base_prob - 0.1,
         "solution_offered": random.random() < base_prob,
         "professional_tone": random.random() < base_prob + 0.1,
         "customer_name_used": random.random() < 0.5,
+
+        # === QA Hodnotenie - 5 hlavných komponentov ===
+        # 1. Otvorenie hovoru (Call Opening)
+        "call_opening": random.random() < base_prob + 0.05,  # Privítanie, identifikácia, ponuka pomoci
+
+        # 2. Zisťovanie potrieb (Needs Assessment)
+        "needs_assessment": random.random() < base_prob - 0.05,  # Aktívne pýtanie, zisťovanie potrieb
+
+        # 3. Riešenie problému (Problem Resolution)
+        "problem_resolution": random.random() < base_prob,  # Ponuka riešenia, vyriešenie problému
+
+        # 4. Profesionálna komunikácia (Professional Communication)
+        "professional_communication": random.random() < base_prob + 0.08,  # Tón, empatia, zdvorilost
+
+        # 5. Uzavretie hovoru (Call Closing)
+        "call_closing": random.random() < base_prob - 0.03,  # Zhrnutie, ďalšie kroky, poďakovanie
     }
-    
+
     script_options = ["good", "partial", "poor"]
     weights = [0.7, 0.25, 0.05] if base_prob > 0.7 else [0.4, 0.4, 0.2]
     quality["script_adherence"] = random.choices(script_options, weights=weights)[0]
     quality["call_control"] = random.choices(script_options, weights=weights)[0]
-    
+
     positive_moments = []
     negative_moments = []
-    
-    if quality["empathy_shown"]:
-        positive_moments.append("Excellent empathy demonstrated")
-    if quality["solution_offered"]:
+
+    # Positive moments based on QA components
+    if quality["call_opening"]:
+        positive_moments.append("Professional call opening")
+    if quality["needs_assessment"]:
+        positive_moments.append("Excellent needs identification")
+    if quality["problem_resolution"]:
         positive_moments.append("Clear solution provided")
-    
-    if not quality["active_listening"]:
-        negative_moments.append("Missed customer cues")
-    if quality["script_adherence"] == "poor":
-        negative_moments.append("Script not followed")
-    
+    if quality["professional_communication"]:
+        positive_moments.append("Professional tone maintained")
+    if quality["call_closing"]:
+        positive_moments.append("Proper call closing")
+
+    # Negative moments
+    if not quality["call_opening"]:
+        negative_moments.append("Improper greeting or identification")
+    if not quality["needs_assessment"]:
+        negative_moments.append("Missed customer needs")
+    if not quality["problem_resolution"]:
+        negative_moments.append("Solution not clearly offered")
+    if not quality["professional_communication"]:
+        negative_moments.append("Unprofessional communication")
+    if not quality["call_closing"]:
+        negative_moments.append("Poor call closing")
+
     quality["positive_moments"] = positive_moments
     quality["negative_moments"] = negative_moments
-    
+
     return quality
 
 

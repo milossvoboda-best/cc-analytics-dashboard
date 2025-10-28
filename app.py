@@ -234,18 +234,52 @@ with tab_overview:
         
         # ROW 2: Sentiment Journey Sankey
         st.subheader("2️⃣ Customer Sentiment Journey Analysis")
-        
-        # Summary metrics on RIGHT
+
+        # Calculate summary first
+        summary = calculate_sentiment_summary(filtered_calls)
+
+        # Layout: Sankey + Tables on left, Summary metrics on right
         col1, col2 = st.columns([2, 1])
+
         with col1:
             # Create Sankey diagram
             fig_sankey = create_sentiment_sankey(filtered_calls)
             st.plotly_chart(fig_sankey, use_container_width=True)
-        
+
+            # Declining breakdown table BELOW Sankey (within col1)
+            if summary['declining_count'] > 0:
+                st.markdown("#### 🔴 Worst Performing - Declining Calls")
+
+                col_a, col_b = st.columns(2)
+
+                with col_a:
+                    st.markdown("**Worst Topics:**")
+                    if summary['declining_by_topic']:
+                        topic_data = []
+                        for item in summary['declining_by_topic']:
+                            topic_data.append({
+                                'Topic': item['topic'],
+                                'Declining Calls': item['count']
+                            })
+                        st.dataframe(pd.DataFrame(topic_data), use_container_width=True, hide_index=True)
+                    else:
+                        st.info("No data")
+
+                with col_b:
+                    st.markdown("**Worst Agents:**")
+                    if summary['declining_by_agent']:
+                        agent_data = []
+                        for item in summary['declining_by_agent']:
+                            agent_data.append({
+                                'Agent': item['agent'],
+                                'Declining Calls': item['count']
+                            })
+                        st.dataframe(pd.DataFrame(agent_data), use_container_width=True, hide_index=True)
+                    else:
+                        st.info("No data")
+
         with col2:
             # Summary metrics
-            summary = calculate_sentiment_summary(filtered_calls)
-            
             st.markdown("#### 📊 Summary")
             st.metric(
                 "😠→😊 IMPROVING",
@@ -254,14 +288,14 @@ with tab_overview:
                 delta_color="normal"
             )
             st.success(f"✅ Strong positive trend")
-            
+
             st.metric(
                 "😐→😐 STABLE",
                 f"{summary['stable_pct']}%",
                 delta=f"{summary['stable_count']} calls",
                 delta_color="off"
             )
-            
+
             st.metric(
                 "😊→😠 DECLINING",
                 f"{summary['declining_pct']}%",
@@ -270,40 +304,8 @@ with tab_overview:
             )
             if summary['declining_pct'] > 10:
                 st.warning(f"⚠️ Monitor decline trend")
-            
+
             st.info(f"💡 Most common: {summary['top_flow']} ({summary['top_flow_count']} calls)")
-        
-        # Declining breakdown table BELOW Sankey (full width)
-        if summary['declining_count'] > 0:
-            st.markdown("### 🔴 Worst Performing - Declining Calls")
-            
-            col_a, col_b = st.columns(2)
-            
-            with col_a:
-                st.markdown("**Worst Topics:**")
-                if summary['declining_by_topic']:
-                    topic_data = []
-                    for item in summary['declining_by_topic']:
-                        topic_data.append({
-                            'Topic': item['topic'],
-                            'Declining Calls': item['count']
-                        })
-                    st.dataframe(pd.DataFrame(topic_data), use_container_width=True, hide_index=True)
-                else:
-                    st.info("No data")
-            
-            with col_b:
-                st.markdown("**Worst Agents:**")
-                if summary['declining_by_agent']:
-                    agent_data = []
-                    for item in summary['declining_by_agent']:
-                        agent_data.append({
-                            'Agent': item['agent'],
-                            'Declining Calls': item['count']
-                        })
-                    st.dataframe(pd.DataFrame(agent_data), use_container_width=True, hide_index=True)
-                else:
-                    st.info("No data")
         
         # ROW 3: First Contact Resolution
         st.subheader("3️⃣ First Contact Resolution (FCR)")
@@ -386,11 +388,11 @@ with tab_overview:
         st.info(f"💡 **Overall**: Avg AHT = {eff_insights['avg_aht']:.1f} min, Avg AES = {eff_insights['avg_aes']:.1f}. Focus on improving topics in bottom-right quadrant.")
         st.markdown("---")
         
-        # ROW 6: Quality Breakdown Trend - REDESIGNED
-        st.subheader("6️⃣ 7-Day Quality Breakdown Trend")
+        # ROW 6: QA Controls Trend
+        st.subheader("6️⃣ 7-dňový trend QA kontrol")
         fig_quality = create_quality_trend_redesigned(filtered_calls, target=75.0)
         st.plotly_chart(fig_quality, use_container_width=True)
-        st.info("💡 Top: Overall AES trend line. Bottom: Stacked bars show component contributions.")
+        st.info("💡 Graf zobrazuje úspešnosť 5 hlavných QA komponentov hodnotenia hovorov. Stacked bars ukazujú percentuálny úspech pre každú QA kontrolu.")
 
 # === TAB 2: AGENTS ===
 with tab_agents:
