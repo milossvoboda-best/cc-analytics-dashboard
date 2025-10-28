@@ -31,21 +31,33 @@ def create_enhanced_timeline(
     call_duration: float
 ) -> go.Figure:
     """
-    Creates simple Gantt-style timeline with sentiment background gradient.
-    
+    Creates comprehensive call timeline visualization for QA analysts.
+
+    Features:
+    - ROW 1: Speaker blocks (Gantt-style) showing when agent/customer speaks
+      * Hover over blocks to see transcript text
+      * Sentiment gradient background (red→yellow→green) shows customer mood evolution
+      * Compliance checkpoints marked at actual occurrence times
+      * Pause/hold periods highlighted
+
+    - ROW 2: Speaking rate (WPM) analysis
+      * Separate lines for agent and customer speech speed
+      * Quality zones (slow/normal/fast/too fast)
+      * Real WPM calculated per segment
+
     Args:
-        segments: [{speaker, text, start_time, end_time}, ...]
-        compliance_checkpoints: [{time, type, passed, description}, ...]
-        sentiment_points: [{time, sentiment, label}, ...] - typically 3 points
+        segments: [{speaker, text, start_time, end_time, word_count}, ...]
+        compliance_checkpoints: [{time, type, passed, description}, ...] - at real times
+        sentiment_points: [{time, sentiment, label}, ...] - typically 3 points (start/mid/end)
         wpm_data: {
-            'agent': [{time, wpm}, ...],
-            'customer': [{time, wpm}, ...]
+            'agent': [{time, wpm}, ...] - calculated per segment,
+            'customer': [{time, wpm}, ...] - calculated per segment
         }
-        silence_periods: [{start, end, type}, ...]
+        silence_periods: [{start, end, type}, ...] - pause (3-10s) or hold (>10s)
         call_duration: Total call length in seconds
-        
+
     Returns:
-        Plotly Figure with 2 subplots
+        Plotly Figure with 2 subplots for complete call analysis
     """
     
     # Create subplot with 2 rows
@@ -61,36 +73,40 @@ def create_enhanced_timeline(
     # ============================================================================
     # ROW 1: SPEAKER TIMELINE (Gantt-style) + SENTIMENT BACKGROUND GRADIENT
     # ============================================================================
-    
-    # First: Add sentiment gradient as BACKGROUND
+
+    # First: Add sentiment gradient as BACKGROUND (Red -> Yellow -> Green transition)
+    # This shows customer sentiment evolution throughout the call
     if len(sentiment_points) >= 2:
         times = [p['time'] for p in sentiment_points]
         sentiments = [p['sentiment'] for p in sentiment_points]
-        
+
         # Interpolate sentiment for smooth gradient
-        smooth_times = np.linspace(times[0], times[-1], 100)
+        smooth_times = np.linspace(times[0], times[-1], 50)
         if len(sentiment_points) >= 3:
             coeffs = np.polyfit(times, sentiments, 2)
             smooth_sentiments = np.polyval(coeffs, smooth_times)
         else:
             smooth_sentiments = np.interp(smooth_times, times, sentiments)
-        
-        # Add sentiment background as colored rectangles
+
+        # Add sentiment background as colored rectangles with STRONGER opacity
         for i in range(len(smooth_times) - 1):
             t_start = smooth_times[i]
             t_end = smooth_times[i + 1]
             s_avg = (smooth_sentiments[i] + smooth_sentiments[i + 1]) / 2
-            
-            # Determine color
-            if s_avg >= 0.3:
-                bg_color = 'rgba(0, 200, 83, 0.15)'  # Green
-            elif s_avg >= 0:
-                bg_color = 'rgba(100, 221, 23, 0.15)'  # Light green
-            elif s_avg >= -0.3:
-                bg_color = 'rgba(255, 167, 38, 0.15)'  # Orange
+
+            # Map sentiment (-1 to +1) to color with MORE VISIBLE opacity
+            # Red (negative) -> Yellow (neutral) -> Green (positive)
+            if s_avg >= 0.5:
+                bg_color = 'rgba(0, 200, 83, 0.35)'  # Strong Green
+            elif s_avg >= 0.2:
+                bg_color = 'rgba(100, 221, 23, 0.30)'  # Light green
+            elif s_avg >= -0.2:
+                bg_color = 'rgba(255, 235, 59, 0.25)'  # Yellow (neutral)
+            elif s_avg >= -0.5:
+                bg_color = 'rgba(255, 167, 38, 0.30)'  # Orange
             else:
-                bg_color = 'rgba(239, 83, 80, 0.15)'  # Red
-            
+                bg_color = 'rgba(239, 83, 80, 0.35)'  # Strong Red
+
             fig.add_shape(
                 type="rect",
                 x0=t_start, x1=t_end,
@@ -101,23 +117,24 @@ def create_enhanced_timeline(
                 row=1, col=1
             )
     
-    # Second: Add speaker segments (Gantt bars)
+    # Second: Add speaker segments (Gantt bars with transcript text on hover)
+    # Each bar represents when agent or customer is speaking
     for seg in segments:
         y_pos = 1 if seg["speaker"] == "AGENT" else 0
         color = COLORS["agent"] if seg["speaker"] == "AGENT" else COLORS["customer"]
         duration = seg["end_time"] - seg["start_time"]
-        
-        # Truncate text for hover
-        text_preview = seg.get('text', '')[:200] + ('...' if len(seg.get('text', '')) > 200 else '')
-        
+
+        # Truncate text for hover - shows transcript when hovering
+        text_preview = seg.get('text', '')[:300] + ('...' if len(seg.get('text', '')) > 300 else '')
+
         fig.add_trace(go.Bar(
             x=[duration],
             y=[y_pos],
             base=[seg["start_time"]],
             orientation='h',
             name=seg["speaker"],
-            marker=dict(color=color, opacity=0.9, line=dict(width=0.5, color='white')),
-            hovertext=f"<b>{seg['speaker']}</b><br>{text_preview}<br>Time: {seg['start_time']:.1f}s - {seg['end_time']:.1f}s",
+            marker=dict(color=color, opacity=0.85, line=dict(width=0.5, color='white')),
+            hovertext=f"<b>{seg['speaker']}</b><br>{text_preview}<br>⏱️ {seg['start_time']:.1f}s - {seg['end_time']:.1f}s ({duration:.1f}s)",
             hovertemplate='%{hovertext}<extra></extra>',
             showlegend=False
         ), row=1, col=1)
@@ -149,39 +166,51 @@ def create_enhanced_timeline(
                 row=1, col=1
             )
     
-    # Add compliance checkpoints AS TIMESTAMPS (vertical lines with labels)
+    # Add compliance checkpoints AS TIMESTAMPS (vertical lines at real occurrence times)
+    # These show when AI detected compliance events (greeting, verification, etc.)
     for checkpoint in compliance_checkpoints:
         icon = '✅' if checkpoint['passed'] else '❌'
         color = COLORS['excellent'] if checkpoint['passed'] else COLORS['critical']
-        
-        # Vertical line
+
+        # Vertical line marking the exact time
         fig.add_shape(
             type="line",
             x0=checkpoint['time'], x1=checkpoint['time'],
-            y0=-0.3, y1=1.3,
-            line=dict(color=color, width=2, dash='dot'),
+            y0=-0.4, y1=1.4,
+            line=dict(color=color, width=3, dash='dot'),
             row=1, col=1
         )
-        
-        # Label at bottom
+
+        # Label at bottom with tooltip info
         fig.add_annotation(
             x=checkpoint['time'],
-            y=-0.35,
-            text=f"{icon} {checkpoint['type']}",
-            showarrow=False,
+            y=-0.42,
+            text=f"<b>{icon} {checkpoint['type']}</b>",
+            showarrow=True,
+            arrowhead=2,
+            arrowsize=1,
+            arrowwidth=2,
+            arrowcolor=color,
+            ax=0,
+            ay=-30,
             font=dict(size=10, color=color, family='Inter'),
-            textangle=-45,
-            xanchor='right',
+            bgcolor='white',
+            bordercolor=color,
+            borderwidth=1,
+            borderpad=3,
+            xanchor='center',
             yanchor='top',
             row=1, col=1
         )
     
     # ============================================================================
-    # ROW 2: SPEAKING RATE (WPM) with zones
+    # ROW 2: SPEAKING RATE (WPM - Words Per Minute) with quality zones
     # ============================================================================
-    
+    # Two separate lines show agent and customer speech speed throughout the call
+    # Helps QA analysts identify rushed/slow speech patterns
+
     # Add WPM reference zones (background rectangles)
-    # Slow zone (<100 WPM)
+    # Slow zone (<100 WPM) - may indicate lack of confidence or hesitation
     fig.add_shape(
         type="rect",
         x0=0, x1=call_duration,
@@ -192,34 +221,34 @@ def create_enhanced_timeline(
         layer="below",
         row=2, col=1
     )
-    
-    # Normal zone (100-160 WPM) - no background
-    
-    # Fast zone (160-200 WPM)
+
+    # Normal zone (100-160 WPM) - ideal speaking rate, no background
+
+    # Fast zone (160-200 WPM) - may indicate rushing
     fig.add_shape(
         type="rect",
         x0=0, x1=call_duration,
         y0=160, y1=200,
         line=dict(width=0),
         fillcolor='yellow',
-        opacity=0.1,
+        opacity=0.12,
         layer="below",
         row=2, col=1
     )
-    
-    # Too fast zone (>200 WPM)
+
+    # Too fast zone (>200 WPM) - difficult for customer to follow
     fig.add_shape(
         type="rect",
         x0=0, x1=call_duration,
         y0=200, y1=250,
         line=dict(width=0),
         fillcolor='red',
-        opacity=0.1,
+        opacity=0.12,
         layer="below",
         row=2, col=1
     )
-    
-    # Add reference lines
+
+    # Add reference lines with thresholds
     for threshold, label in [(100, 'Slow'), (160, 'Fast'), (200, 'Too Fast')]:
         fig.add_shape(
             type="line",
@@ -228,31 +257,31 @@ def create_enhanced_timeline(
             line=dict(color=COLORS['neutral'], width=1, dash='dash'),
             row=2, col=1
         )
-    
-    # Plot agent WPM line
-    if wpm_data.get('agent'):
+
+    # Plot agent WPM line - calculated per segment
+    if wpm_data.get('agent') and len(wpm_data['agent']) > 0:
         agent_df = pd.DataFrame(wpm_data['agent'])
         fig.add_trace(go.Scatter(
             x=agent_df['time'],
             y=agent_df['wpm'],
             mode='lines+markers',
-            name='Agent WPM',
-            line=dict(color=COLORS['agent'], width=2),
-            marker=dict(size=5),
-            hovertemplate='Agent: %{y:.0f} WPM<br>Time: %{x:.1f}s<extra></extra>'
+            name='🎧 Agent WPM',
+            line=dict(color=COLORS['agent'], width=3),
+            marker=dict(size=6, symbol='circle'),
+            hovertemplate='<b>Agent</b><br>%{y:.0f} WPM<br>Time: %{x:.1f}s<extra></extra>'
         ), row=2, col=1)
-    
-    # Plot customer WPM line
-    if wpm_data.get('customer'):
+
+    # Plot customer WPM line - calculated per segment
+    if wpm_data.get('customer') and len(wpm_data['customer']) > 0:
         customer_df = pd.DataFrame(wpm_data['customer'])
         fig.add_trace(go.Scatter(
             x=customer_df['time'],
             y=customer_df['wpm'],
             mode='lines+markers',
-            name='Customer WPM',
-            line=dict(color=COLORS['customer'], width=2),
-            marker=dict(size=5),
-            hovertemplate='Customer: %{y:.0f} WPM<br>Time: %{x:.1f}s<extra></extra>'
+            name='👤 Customer WPM',
+            line=dict(color=COLORS['customer'], width=3),
+            marker=dict(size=6, symbol='square'),
+            hovertemplate='<b>Customer</b><br>%{y:.0f} WPM<br>Time: %{x:.1f}s<extra></extra>'
         ), row=2, col=1)
     
     

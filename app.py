@@ -431,77 +431,106 @@ with tab_calls:
             st.markdown("---")
             st.markdown("### 📊 Enhanced Call Timeline")
             segments = get_transcript_for_call(selected_call_id, st.session_state.transcripts)
-            
+
             if segments:
                 # Detect silences
                 silence_periods, _ = detect_silences(segments, call_row["duration_sec"])
-                
-                # Prepare compliance checkpoints
+
+                # Prepare compliance checkpoints with REALISTIC TIMES
+                # Find actual times when these events occurred in transcript
                 comp = call_row["compliance"]
-                compliance_checkpoints = [
-                    {
-                        "time": 5, 
-                        "type": "Greeting", 
-                        "passed": comp.get("greeting_proper", True),
+
+                # Helper function to find agent speech time in specific range
+                def find_agent_speech_time(segments, min_pct, max_pct, duration):
+                    min_time = duration * min_pct
+                    max_time = duration * max_pct
+                    agent_segs = [s for s in segments if s["speaker"] == "AGENT" and min_time <= s["start_time"] <= max_time]
+                    if agent_segs:
+                        return agent_segs[0]["start_time"] + (agent_segs[0]["end_time"] - agent_segs[0]["start_time"]) / 2
+                    return (min_time + max_time) / 2
+
+                compliance_checkpoints = []
+
+                # Greeting - should be in first 10% of call
+                if comp.get("greeting_proper", True):
+                    greeting_time = find_agent_speech_time(segments, 0, 0.1, call_row["duration_sec"])
+                    compliance_checkpoints.append({
+                        "time": greeting_time,
+                        "type": "Greeting",
+                        "passed": True,
                         "description": "Agent properly greeted the customer"
-                    },
-                    {
-                        "time": 15, 
-                        "type": "Verification", 
-                        "passed": comp.get("customer_verification", False),
+                    })
+
+                # Verification - should be in first 20% of call
+                if comp.get("customer_verification", False):
+                    verification_time = find_agent_speech_time(segments, 0.05, 0.2, call_row["duration_sec"])
+                    compliance_checkpoints.append({
+                        "time": verification_time,
+                        "type": "Verification",
+                        "passed": True,
                         "description": "Customer identity verified"
-                    },
-                    {
-                        "time": call_row["duration_sec"] * 0.3, 
-                        "type": "Data Protection", 
-                        "passed": comp.get("data_protection_mentioned", True),
+                    })
+
+                # Data Protection - middle 30-60% of call
+                if comp.get("data_protection_mentioned", True):
+                    data_prot_time = find_agent_speech_time(segments, 0.3, 0.6, call_row["duration_sec"])
+                    compliance_checkpoints.append({
+                        "time": data_prot_time,
+                        "type": "Data Protection",
+                        "passed": True,
                         "description": "Data protection policy mentioned"
-                    },
-                    {
-                        "time": call_row["duration_sec"] * 0.9, 
-                        "type": "Call Summary", 
-                        "passed": comp.get("call_summarized", True),
+                    })
+
+                # Call Summary - last 15% of call
+                if comp.get("call_summarized", True):
+                    summary_time = find_agent_speech_time(segments, 0.85, 1.0, call_row["duration_sec"])
+                    compliance_checkpoints.append({
+                        "time": summary_time,
+                        "type": "Call Summary",
+                        "passed": True,
                         "description": "Agent provided call summary"
-                    }
-                ]
-                
+                    })
+
                 # Prepare sentiment points
                 sentiment_points = [
                     {
-                        "time": 0, 
-                        "sentiment": call_row['sentiment_start'], 
+                        "time": 0,
+                        "sentiment": call_row['sentiment_start'],
                         "label": "Start"
                     },
                     {
-                        "time": call_row["duration_sec"] / 2, 
-                        "sentiment": call_row['sentiment_middle'], 
+                        "time": call_row["duration_sec"] / 2,
+                        "sentiment": call_row['sentiment_middle'],
                         "label": "Mid"
                     },
                     {
-                        "time": call_row["duration_sec"], 
-                        "sentiment": call_row['sentiment_end'], 
+                        "time": call_row["duration_sec"],
+                        "sentiment": call_row['sentiment_end'],
                         "label": "End"
                     }
                 ]
-                
-                # Prepare WPM data (sample points throughout call)
+
+                # Prepare WPM data - calculate REAL WPM per segment
                 import numpy as np
-                duration = call_row["duration_sec"]
-                num_points = 10
-                time_points = np.linspace(0, duration, num_points)
-                
-                agent_wpm_base = calculate_speaking_rate(segments, "AGENT")
-                customer_wpm_base = calculate_speaking_rate(segments, "CUSTOMER")
-                
+
+                # Calculate WPM for each segment
+                agent_wpm_points = []
+                customer_wpm_points = []
+
+                for seg in segments:
+                    duration_min = (seg["end_time"] - seg["start_time"]) / 60
+                    if duration_min > 0:
+                        wpm = seg["word_count"] / duration_min
+                        time_point = (seg["start_time"] + seg["end_time"]) / 2
+
+                        if seg["speaker"] == "AGENT":
+                            agent_wpm_points.append({"time": time_point, "wpm": round(wpm, 1)})
+                        else:
+                            customer_wpm_points.append({"time": time_point, "wpm": round(wpm, 1)})
+
                 wpm_data = {
-                    "agent": [
-                        {"time": t, "wpm": agent_wpm_base + np.random.uniform(-15, 15)} 
-                        for t in time_points
-                    ],
-                    "customer": [
-                        {"time": t, "wpm": customer_wpm_base + np.random.uniform(-15, 15)} 
-                        for t in time_points
-                    ]
+                    "agent": agent_wpm_points,
+                    "customer": customer_wpm_points
                 }
                 
                 # Create enhanced timeline
@@ -515,7 +544,16 @@ with tab_calls:
                 )
                 
                 st.plotly_chart(fig_timeline, use_container_width=True)
-                
+
+                # Info box explaining timeline features
+                st.info("""
+                💡 **Ako čítať timeline:**
+                - **Horný graf:** Modré bloky = Agent hovorí, Oranžové bloky = Zákazník hovorí. Prejdite myšou pre text prepisu.
+                - **Pozadie:** Farebný prechod (červená→žltá→zelená) ukazuje zmenu sentimentu zákazníka počas hovoru.
+                - **Zvislé čiary:** Označujú kde AI identifikovalo povinné body (pozdrav, verifikácia, atď.).
+                - **Dolný graf:** Rýchlosť reči (WPM) agenta a zákazníka v reálnom čase.
+                """)
+
                 # Summary stats
                 stats = calculate_timeline_stats(segments, silence_periods, wpm_data, sentiment_points)
                 
