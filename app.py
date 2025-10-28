@@ -311,7 +311,7 @@ with tab_overview:
         # Calculate both FCR metrics
         fcr_stats = calculate_fcr_rate(filtered_calls)
         fcr_agent = fcr_stats['fcr_rate']
-        fcr_computed = (filtered_calls["resolution"].apply(lambda x: x["callback_needed"]) == "no").mean() * 100
+        fcr_computed = (filtered_calls["resolution"].apply(lambda x: not x["callback_needed"])).mean() * 100
         
         # Create dual gauge chart
         fig_fcr = create_fcr_dual_gauge(fcr_agent, fcr_computed)
@@ -440,7 +440,7 @@ with tab_calls:
                     {
                         "time": 5, 
                         "type": "Greeting", 
-                        "passed": comp.get("greeting_used", True),
+                        "passed": comp.get("greeting_proper", True),
                         "description": "Agent properly greeted the customer"
                     },
                     {

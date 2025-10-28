@@ -120,7 +120,7 @@ def prepare_qa_components_daily(df: pd.DataFrame) -> pd.DataFrame:
     
     # Extract QA binary flags from quality field
     df['active_listening'] = df['quality'].apply(lambda x: 1 if x.get('active_listening', False) else 0)
-    df['empathy'] = df['quality'].apply(lambda x: 1 if x.get('empathy', False) else 0)
+    df['empathy'] = df['quality'].apply(lambda x: 1 if x.get('empathy_shown', False) else 0)
     df['solution_offered'] = df['quality'].apply(lambda x: 1 if x.get('solution_offered', False) else 0)
     df['professional_tone'] = df['quality'].apply(lambda x: 1 if x.get('professional_tone', False) else 0)
     
